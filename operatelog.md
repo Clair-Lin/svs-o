@@ -1,5 +1,11 @@
 # 操作日志
 
+## 2026-04-07（Git 初始化与 GitHub 远程）
+
+- 新增 **`.gitignore`**（忽略 `node_modules/`、`dist/`、日志与常见编辑器目录等）。
+- 在项目根目录执行 **`git init`**，首次提交 `chore: initial commit - SVS 1.7.1 prototype (Vue 3 + Vite)`，并添加远程 **`origin`** → `https://github.com/Clair-Lin/svs18.git`。
+- 当前环境向 GitHub **推送失败**（连接超时 / 无法交互输入账号），需在可访问 GitHub 的本机完成登录后执行：`git push -u origin main`。
+
 ## 2026-04-07（白名单搜索改为按钮触发）
 
 - **`src/views/whitelist/WhitelistConfig.vue`**：搜索栏新增「查询」「重置」按钮；筛选逻辑由输入即筛选改为“点击查询后才生效”（引入 `appliedSearchIp/appliedSearchRemark` 作为已提交条件），并支持回车触发查询。
