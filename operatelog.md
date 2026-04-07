@@ -1,5 +1,9 @@
 # 操作日志
 
+## 2026-04-07（AdminManage · style 标签笔误）
+
+- **`src/views/system/AdminManage.vue`**：修正 `<style lang="scss" scoped">` 中 `scoped` 后多余的双引号，改为合法标签 `<style lang="scss" scoped>`，消除生产构建时 Vue 模板解析报错（`Attribute name cannot contain`）。
+
 ## 2026-04-07（Netlify 构建 · AdminManage 模板）
 
 - **`src/views/system/AdminManage.vue`**：将 `:type` / `:class` / `:disabled` 中内联的中文字符串比较改为 `roleTagType`、`statusRowClass`、`isSuperAdmin` 辅助函数及 `ROLE_SUPER`、`STATUS_OK` 常量，避免模板属性值内嵌引号在部分环境下触发 Vue 模板解析报错。

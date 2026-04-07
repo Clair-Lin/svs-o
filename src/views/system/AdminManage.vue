@@ -77,7 +77,7 @@ const handleAdd = () => {
 }
 </script>
 
-<style lang="scss" scoped">
+<style lang="scss" scoped>
 .action-bar {
   margin-bottom: 16px;
 }
