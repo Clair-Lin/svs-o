@@ -1,0 +1,117 @@
+@import './variables.scss';
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #app {
+  height: 100%;
+  font-family: $font-family;
+  font-size: $font-size-base;
+  color: $text-primary;
+  background-color: $content-bg;
+}
+
+// 滚动条样式
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #bbb;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+// 通用卡片样式
+.page-card {
+  background: $card-bg;
+  border-radius: $border-radius;
+  box-shadow: $box-shadow;
+  padding: $spacing-lg;
+
+  &:hover {
+    box-shadow: $box-shadow-hover;
+  }
+}
+
+.card-title {
+  font-size: $font-size-lg;
+  font-weight: bold;
+  color: $text-primary;
+  margin-bottom: $spacing-md;
+  padding-bottom: $spacing-sm;
+  border-bottom: 1px solid $border-light;
+}
+
+// 状态标签
+.status-tag {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: $border-radius-sm;
+  font-size: $font-size-sm;
+  font-weight: bold;
+
+  &.success {
+    background: $success-color;
+    color: $text-white;
+  }
+
+  &.warning {
+    background: $warning-color;
+    color: $text-white;
+  }
+
+  &.danger {
+    background: $danger-color;
+    color: $text-white;
+  }
+}
+
+// Element Plus 覆盖
+.el-menu {
+  border-right: none !important;
+}
+
+.el-table th {
+  background-color: $border-light !important;
+}
+
+// 页面过渡动画
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+// 布局容器
+.layout-container {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+// 主内容区域
+.main-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.content-wrapper {
+  flex: 1;
+  padding: $spacing-md;
+  overflow-y: auto;
+  background: $content-bg;
+}
