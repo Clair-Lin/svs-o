@@ -1,5 +1,9 @@
 # 操作日志
 
+## 2026-04-07（Netlify 构建 · AdminManage 模板）
+
+- **`src/views/system/AdminManage.vue`**：将 `:type` / `:class` / `:disabled` 中内联的中文字符串比较改为 `roleTagType`、`statusRowClass`、`isSuperAdmin` 辅助函数及 `ROLE_SUPER`、`STATUS_OK` 常量，避免模板属性值内嵌引号在部分环境下触发 Vue 模板解析报错。
+
 ## 2026-04-07（删除仓库中 GMT 0019 PDF）
 
 - 从仓库移除 `GMT+0019-2023+通用密码服务接口规范DI.pdf`（Git 跟踪文件删除），用于清理 GitHub 仓库中的该文档文件。

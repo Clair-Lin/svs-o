@@ -14,7 +14,7 @@
         <el-table-column prop="username" label="用户名" width="150" />
         <el-table-column prop="role" label="角色" width="120">
           <template #default="{ row }">
-            <el-tag :type="row.role === '超级管理员' ? 'danger' : 'primary'">
+            <el-tag :type="roleTagType(row)">
               {{ row.role }}
             </el-tag>
           </template>
@@ -23,7 +23,7 @@
         <el-table-column prop="lastLogin" label="最后登录" width="160" />
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
-            <span class="status-tag" :class="row.status === '正常' ? 'success' : 'danger'">
+            <span class="status-tag" :class="statusRowClass(row)">
               {{ row.status }}
             </span>
           </template>
@@ -36,7 +36,7 @@
               type="danger"
               size="small"
               link
-              :disabled="row.role === '超级管理员'"
+              :disabled="isSuperAdmin(row)"
             >
               删除
             </el-button>
@@ -51,11 +51,26 @@
 import { ref } from 'vue'
 import { Plus } from '@element-plus/icons-vue'
 
+const ROLE_SUPER = '超级管理员'
+const STATUS_OK = '正常'
+
 const adminList = ref([
-  { username: 'svssysadmin', role: '超级管理员', email: 'admin@example.com', lastLogin: '2024-03-15 10:00:00', status: '正常' },
-  { username: 'operator1', role: '操作员', email: 'operator1@example.com', lastLogin: '2024-03-14 16:30:00', status: '正常' },
-  { username: 'auditor1', role: '审计员', email: 'auditor1@example.com', lastLogin: '2024-03-14 09:00:00', status: '正常' }
+  { username: 'svssysadmin', role: ROLE_SUPER, email: 'admin@example.com', lastLogin: '2024-03-15 10:00:00', status: STATUS_OK },
+  { username: 'operator1', role: '操作员', email: 'operator1@example.com', lastLogin: '2024-03-14 16:30:00', status: STATUS_OK },
+  { username: 'auditor1', role: '审计员', email: 'auditor1@example.com', lastLogin: '2024-03-14 09:00:00', status: STATUS_OK }
 ])
+
+function roleTagType (row) {
+  return row.role === ROLE_SUPER ? 'danger' : 'primary'
+}
+
+function statusRowClass (row) {
+  return row.status === STATUS_OK ? 'success' : 'danger'
+}
+
+function isSuperAdmin (row) {
+  return row.role === ROLE_SUPER
+}
 
 const handleAdd = () => {
   // 添加管理员
