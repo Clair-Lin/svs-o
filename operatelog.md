@@ -1,5 +1,11 @@
 # 操作日志
 
+## 2026-04-07（全项目 Vue 标签扫描）
+
+- 已检索全部 `*.vue` 中 **`scoped">` 错误写法**（`scoped` 后多写双引号）：`src/` 下均已为合法 `<style lang="scss" scoped>`；仅 **`SV1.8.0/src/views/system/AdminManage.vue`** 副本曾含该笔误，已改为与主工程一致。
+- 已核对 `src/` 内共 20 个 Vue 文件的 `<style` 起始行，无同类畸形闭合。
+- 本地执行 **`npm run build`** 通过，用于确认生产构建下 SFC 解析无报错。
+
 ## 2026-04-07（AdminManage · style 标签笔误）
 
 - **`src/views/system/AdminManage.vue`**：修正 `<style lang="scss" scoped">` 中 `scoped` 后多余的双引号，改为合法标签 `<style lang="scss" scoped>`，消除生产构建时 Vue 模板解析报错（`Attribute name cannot contain`）。
