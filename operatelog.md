@@ -1,5 +1,9 @@
 # 操作日志
 
+## 2026-04-08（Git · 推送至 GitHub）
+
+- 本地提交 `e16fe6f`（`chore: 同步原型更新（白名单/一键检测/监控/CA与密钥等）`），已 `git push origin main` 至远程 `https://github.com/Clair-Lin/svs18.git`。
+
 ## 2026-04-08（一键检测 · 服务接口增加云签名四类检测）
 
 - **`src/views/Detect.vue`**：服务接口检测列表增加 **获取随机数**（`/cloud_sign_svs/cert/generateRandom`）、**导出证书**（`/cloud_sign_svs/cert/ExportCert`）、**数据签名**（`/cloud_sign_svs/cert/SignData`）、**数据验签**（`/cloud_sign_svs/cert/VerifySignedData`）；与现有三项共用占位主机 `https://192.168.1.100:443` 拼接完整 URL；`STEPS_SERVICE`、`STEPS_ALL` 进度与状态文案同步为 7 项服务接口（含上述四类）+ 完成/加密卡/汇总。
