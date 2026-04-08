@@ -2,7 +2,7 @@
 
 ## 2026-04-08（Git · 推送至 GitHub）
 
-- 本地提交 `e16fe6f`（`chore: 同步原型更新（白名单/一键检测/监控/CA与密钥等）`），已 `git push origin main` 至远程 `https://github.com/Clair-Lin/svs18.git`。
+- 已将本地 `main` 推送到 `https://github.com/Clair-Lin/svs18.git`（含原型各页面与 operatelog 等提交）。
 
 ## 2026-04-08（一键检测 · 服务接口增加云签名四类检测）
 
