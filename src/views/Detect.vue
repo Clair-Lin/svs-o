@@ -2,25 +2,51 @@
   <div class="detect">
     <div class="page-card detect-card">
       <div class="card-title">一键检测</div>
-
-      <div class="toolbar">
-        <div class="toolbar-row">
-          <span class="toolbar-label">检测内容</span>
-          <el-radio-group v-model="detectType" size="default">
+      <div class="config-panel">
+        <div class="config-panel__left">
+          <span class="config-label">检测方式：</span>
+          <el-radio-group v-model="detectType" class="check-method-segment">
             <el-radio-button label="all">全部检测</el-radio-button>
             <el-radio-button label="service">服务接口检测</el-radio-button>
             <el-radio-button label="card">加密卡检测</el-radio-button>
           </el-radio-group>
         </div>
+        <el-button
+          type="primary"
+          class="config-panel__btn"
+          :loading="detecting"
+          @click="runDetect"
+        >
+          {{ detecting ? '检查中...' : '开始检查' }}
+        </el-button>
+      </div>
+    </div>
 
-        <div class="toolbar-actions">
-          <el-button type="primary" size="large" :loading="detecting" @click="runDetect">
-            <el-icon v-if="!detecting"><VideoPlay /></el-icon>
-            {{ detecting ? '检测中...' : '开始检测' }}
-          </el-button>
-        </div>
+    <div class="page-card results-module">
+      <div class="results-module__toolbar">
+        <span class="results-module__toolbar-title">检查结果</span>
+        <el-button
+          v-if="summary"
+          type="primary"
+          plain
+          :icon="Download"
+          @click="exportReport"
+        >
+          导出报告
+        </el-button>
+      </div>
+      <div class="results-module__body">
+        <el-alert
+          v-if="!detecting && !summary"
+          type="info"
+          :closable="false"
+          show-icon
+          class="results-module__hint"
+        >
+          {{ idleHintText }}
+        </el-alert>
 
-        <div class="progress-wrap">
+        <div v-if="detecting || summary" class="progress-wrap results-module__progress">
           <el-progress
             :percentage="progressShown"
             :stroke-width="14"
@@ -28,121 +54,144 @@
           />
           <div v-if="progressStatus" class="progress-text">{{ progressStatus }}</div>
         </div>
-      </div>
 
-      <template v-if="summary">
-        <div class="stat-cards">
-          <div class="stat-card" :class="overallStatusClass">
-            <div class="stat-card-icon">
-              <el-icon v-if="overallOk" :size="28"><CircleCheck /></el-icon>
-              <el-icon v-else :size="28"><WarningFilled /></el-icon>
-            </div>
-            <div class="stat-card-body">
-              <div class="stat-card-label">整体状态</div>
-              <div class="stat-card-value">{{ overallLabel }}</div>
+        <template v-if="summary">
+          <div class="detect-stat-strip detect-stat-strip--in-results">
+            <div class="stat-cards stat-cards--inspect">
+              <div class="stat-card stat-card--overall" :class="overallStatusClass">
+                <div class="stat-card-icon">
+                  <el-icon v-if="overallOk" :size="28"><CircleCheck /></el-icon>
+                  <el-icon v-else-if="summary.warning > 0 && summary.failed === 0" :size="28"><WarningFilled /></el-icon>
+                  <el-icon v-else :size="28"><CircleCloseFilled /></el-icon>
+                </div>
+                <div class="stat-card-body">
+                  <div class="stat-card-label">整体状态</div>
+                  <div class="stat-card-value stat-card-value--emphasis">{{ overallLabel }}</div>
+                </div>
+              </div>
+              <div class="stat-card stat-card--plain">
+                <div class="stat-card-body">
+                  <div class="stat-card-label">检测项总数</div>
+                  <div class="stat-card-value num">{{ inspectItemStats.total }}</div>
+                </div>
+              </div>
+              <div class="stat-card stat-card--plain stat-card--tone-ok">
+                <div class="stat-card-body">
+                  <div class="stat-card-label">正常</div>
+                  <div class="stat-card-value num">{{ inspectItemStats.ok }}</div>
+                </div>
+              </div>
+              <div class="stat-card stat-card--plain stat-card--tone-warn">
+                <div class="stat-card-body">
+                  <div class="stat-card-label">警告</div>
+                  <div class="stat-card-value num">{{ inspectItemStats.warn }}</div>
+                </div>
+              </div>
+              <div class="stat-card stat-card--plain stat-card--tone-bad">
+                <div class="stat-card-body">
+                  <div class="stat-card-label">异常</div>
+                  <div class="stat-card-value num">{{ inspectItemStats.bad }}</div>
+                </div>
+              </div>
             </div>
           </div>
-          <div class="stat-card">
-            <div class="stat-card-body">
-              <div class="stat-card-label">检测项总数</div>
-              <div class="stat-card-value num">{{ summary.total }}</div>
-            </div>
-          </div>
-          <div class="stat-card stat-ok">
-            <div class="stat-card-body">
-              <div class="stat-card-label">正常</div>
-              <div class="stat-card-value num">{{ summary.passed }}</div>
-            </div>
-          </div>
-          <div class="stat-card stat-warn">
-            <div class="stat-card-body">
-              <div class="stat-card-label">警告</div>
-              <div class="stat-card-value num">{{ summary.warning }}</div>
-            </div>
-          </div>
-          <div class="stat-card stat-bad">
-            <div class="stat-card-body">
-              <div class="stat-card-label">异常</div>
-              <div class="stat-card-value num">{{ summary.failed }}</div>
-            </div>
-          </div>
-        </div>
 
-        <p class="finish-time">完成时间：{{ summary.time }}</p>
+          <p class="finish-time">完成时间：{{ summary.time }}</p>
 
-        <div class="result-node">
-          <div class="result-node-head">
-            <span class="node-title">检测对象</span>
-            <span class="node-meta">本机 192.168.1.100</span>
-            <span class="node-counts">
-              <span class="ok">{{ normalCount }}/{{ summary.total }} 正常</span>
-              <span class="bad" v-if="summary.failed > 0">{{ summary.failed }} 异常</span>
+          <div class="inspect-target-bar">
+            <span class="inspect-target-bar__left">检测对象 {{ summary.targetLabel }}</span>
+            <span
+              class="inspect-target-bar__right"
+              :class="{
+                'inspect-target-bar__right--ok': inspectItemStats.bad === 0 && inspectItemStats.warn === 0,
+                'inspect-target-bar__right--warn': inspectItemStats.bad === 0 && inspectItemStats.warn > 0,
+                'inspect-target-bar__right--bad': inspectItemStats.bad > 0
+              }"
+            >
+              {{ inspectItemStats.ok }}/{{ inspectItemStats.total }} 正常
             </span>
           </div>
 
-          <el-collapse v-model="collapseActive" class="check-collapse">
-            <el-collapse-item v-if="serviceResults.length" name="service">
-              <template #title>
-                <span class="collapse-title">服务接口检测</span>
-                <el-tag size="small" type="info" class="collapse-count">{{ serviceResults.length }} 项</el-tag>
-              </template>
+          <div
+            class="inspect-detail-panel"
+            :class="{ 'inspect-detail-panel--error': summary.failed > 0 }"
+          >
+            <div
+              v-for="(cat, ci) in resultCategories"
+              :key="ci"
+              class="inspect-cat"
+            >
               <div
-                v-for="row in serviceResults"
-                :key="row.name"
-                class="check-item"
+                class="inspect-cat__header"
+                role="button"
+                tabindex="0"
+                @click="toggleCategory(ci)"
+                @keydown.enter.prevent="toggleCategory(ci)"
               >
-                <div class="check-item-icon" :class="row.status === '正常' ? 'is-ok' : 'is-bad'">
-                  <el-icon v-if="row.status === '正常'"><SuccessFilled /></el-icon>
-                  <el-icon v-else><CircleCloseFilled /></el-icon>
-                </div>
-                <div class="check-item-main">
-                  <div class="check-item-name">{{ row.name }}</div>
-                  <div class="check-item-meta">接口地址：{{ row.url }}</div>
-                  <div class="check-item-meta">响应时间：{{ row.responseTime }} · {{ row.detail }}</div>
-                </div>
-                <el-tag :type="row.status === '正常' ? 'success' : 'danger'" size="small">{{ row.status }}</el-tag>
+                <span class="inspect-cat__title">{{ cat.name }}</span>
+                <span class="inspect-cat__badge">{{ cat.items.length }}项</span>
+                <el-icon class="inspect-cat__chevron">
+                  <ArrowDown v-if="isCategoryExpanded(ci)" />
+                  <ArrowRight v-else />
+                </el-icon>
               </div>
-            </el-collapse-item>
-
-            <el-collapse-item v-if="cardResult" name="card">
-              <template #title>
-                <span class="collapse-title">加密卡检测</span>
-                <el-tag size="small" type="info" class="collapse-count">{{ cardCheckItems.length }} 项</el-tag>
-              </template>
-              <div
-                v-for="item in cardCheckItems"
-                :key="item.name"
-                class="check-item"
-              >
-                <div class="check-item-icon" :class="item.ok ? 'is-ok' : 'is-bad'">
-                  <el-icon v-if="item.ok"><SuccessFilled /></el-icon>
-                  <el-icon v-else><CircleCloseFilled /></el-icon>
+              <div v-show="isCategoryExpanded(ci)" class="inspect-cat__body">
+                <div
+                  v-for="(item, ii) in cat.items"
+                  :key="ii + item.name"
+                  class="inspect-result-row"
+                >
+                  <div
+                    class="inspect-result-row__icon"
+                    :class="`inspect-result-row__icon--${item.tagType}`"
+                  >
+                    <el-icon :size="14">
+                      <CircleCheck v-if="item.tagType === 'success'" />
+                      <WarningFilled v-else-if="item.tagType === 'warning'" />
+                      <CircleCloseFilled v-else />
+                    </el-icon>
+                  </div>
+                  <div class="inspect-result-row__main">
+                    <div class="inspect-result-row__name">{{ item.name }}</div>
+                    <div
+                      v-for="(line, li) in item.metaLines"
+                      :key="li"
+                      class="inspect-result-row__meta"
+                    >
+                      {{ line }}
+                    </div>
+                  </div>
+                  <div
+                    class="inspect-result-row__status"
+                    :class="`inspect-result-row__status--${item.tagType}`"
+                  >
+                    {{ item.label }}
+                  </div>
                 </div>
-                <div class="check-item-main">
-                  <div class="check-item-name">{{ item.name }}</div>
-                  <div class="check-item-meta">{{ item.detail }}</div>
-                </div>
-                <el-tag :type="item.ok ? 'success' : 'danger'" size="small">{{ item.statusText }}</el-tag>
               </div>
-            </el-collapse-item>
-          </el-collapse>
-        </div>
-      </template>
+            </div>
+          </div>
+        </template>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { ElMessage } from 'element-plus'
 import {
   CircleCheck,
-  VideoPlay,
-  SuccessFilled,
   CircleCloseFilled,
-  WarningFilled
+  WarningFilled,
+  Download,
+  ArrowRight,
+  ArrowDown
 } from '@element-plus/icons-vue'
 
+/** 检测方式：全部 / 服务接口 / 加密卡 */
 const detectType = ref('all')
+
 const detecting = ref(false)
 const progress = ref(0)
 const progressStatus = ref('')
@@ -151,7 +200,15 @@ const serviceResults = ref([])
 const cardResult = ref(null)
 const summary = ref(null)
 
-const collapseActive = ref(['service', 'card'])
+/** 各检测分类独立折叠，默认展开 */
+const categoryExpanded = ref({})
+
+const isCategoryExpanded = (ci) => categoryExpanded.value[ci] !== false
+
+function toggleCategory(ci) {
+  const open = isCategoryExpanded(ci)
+  categoryExpanded.value = { ...categoryExpanded.value, [ci]: !open }
+}
 
 /** 切换「检测内容」时清空结果；检测进行中则中断定时器 */
 let detectTimer = null
@@ -167,10 +224,28 @@ function clearDetectResults() {
   summary.value = null
   progress.value = 0
   progressStatus.value = ''
-  collapseActive.value = ['service', 'card']
+  categoryExpanded.value = {}
 }
 
 watch(detectType, clearDetectResults)
+
+const TARGET_LABEL = {
+  all: '本机 192.168.1.100',
+  service: '本机 192.168.1.100 · 服务接口',
+  card: '本机 192.168.1.100 · 加密卡'
+}
+
+const idleHintText = computed(() => {
+  const map = {
+    all: '请点击「开始检查」执行全部检测。',
+    service: '请点击「开始检查」仅执行服务接口检测。',
+    card: '请点击「开始检查」仅执行加密卡检测。'
+  }
+  return map[detectType.value] || map.all
+})
+
+/** 云签名服务接口基址（与检测结果展示一致，实际环境由部署决定） */
+const CLOUD_SVS_BASE = 'https://192.168.1.100:443'
 
 const SERVICE_INTERFACE_ROWS = [
   {
@@ -193,6 +268,34 @@ const SERVICE_INTERFACE_ROWS = [
     status: '正常',
     responseTime: '14ms',
     detail: '验签接口响应正常'
+  },
+  {
+    name: '获取随机数',
+    url: `${CLOUD_SVS_BASE}/cloud_sign_svs/cert/generateRandom`,
+    status: '正常',
+    responseTime: '12ms',
+    detail: '随机数接口响应正常'
+  },
+  {
+    name: '导出证书',
+    url: `${CLOUD_SVS_BASE}/cloud_sign_svs/cert/ExportCert`,
+    status: '正常',
+    responseTime: '16ms',
+    detail: '导出证书接口响应正常'
+  },
+  {
+    name: '数据签名',
+    url: `${CLOUD_SVS_BASE}/cloud_sign_svs/cert/SignData`,
+    status: '正常',
+    responseTime: '17ms',
+    detail: '数据签名接口响应正常'
+  },
+  {
+    name: '数据验签',
+    url: `${CLOUD_SVS_BASE}/cloud_sign_svs/cert/VerifySignedData`,
+    status: '正常',
+    responseTime: '15ms',
+    detail: '数据验签接口响应正常'
   }
 ]
 
@@ -206,24 +309,32 @@ const MOCK_CARD = {
 }
 
 const STEPS_SERVICE = [
-  { progress: 25, status: '正在检测获取服务器证书接口...' },
-  { progress: 50, status: '正在检测服务器签名接口...' },
-  { progress: 75, status: '正在检测服务器验签接口...' },
-  { progress: 100, status: '检测完成' }
+  { progress: 14, status: '正在检查获取服务器证书接口...' },
+  { progress: 28, status: '正在检查服务器签名接口...' },
+  { progress: 42, status: '正在检查服务器验签接口...' },
+  { progress: 57, status: '正在检查获取随机数接口...' },
+  { progress: 71, status: '正在检查导出证书接口...' },
+  { progress: 85, status: '正在检查数据签名接口...' },
+  { progress: 94, status: '正在检查数据验签接口...' },
+  { progress: 100, status: '检查完成' }
 ]
 
 const STEPS_CARD = [
-  { progress: 50, status: '正在检测加密卡...' },
-  { progress: 100, status: '检测完成' }
+  { progress: 50, status: '正在检查加密卡...' },
+  { progress: 100, status: '检查完成' }
 ]
 
 const STEPS_ALL = [
-  { progress: 18, status: '正在检测获取服务器证书接口...' },
-  { progress: 36, status: '正在检测服务器签名接口...' },
-  { progress: 54, status: '正在检测服务器验签接口...' },
-  { progress: 72, status: '正在检测加密卡...' },
-  { progress: 88, status: '正在汇总检测结果...' },
-  { progress: 100, status: '检测完成' }
+  { progress: 10, status: '正在检查获取服务器证书接口...' },
+  { progress: 20, status: '正在检查服务器签名接口...' },
+  { progress: 30, status: '正在检查服务器验签接口...' },
+  { progress: 40, status: '正在检查获取随机数接口...' },
+  { progress: 50, status: '正在检查导出证书接口...' },
+  { progress: 60, status: '正在检查数据签名接口...' },
+  { progress: 70, status: '正在检查数据验签接口...' },
+  { progress: 80, status: '正在检查加密卡...' },
+  { progress: 90, status: '正在汇总检查结果...' },
+  { progress: 100, status: '检查完成' }
 ]
 
 const progressShown = computed(() => (detecting.value ? progress.value : summary.value ? 100 : 0))
@@ -249,26 +360,72 @@ const overallStatusClass = computed(() => {
   return 'is-ok'
 })
 
-const normalCount = computed(() => (summary.value ? summary.value.passed : 0))
-
 const cardCheckItems = computed(() => {
   if (!cardResult.value) return []
   const c = cardResult.value
   return [
     {
-      name: '加密卡连接',
+      name: '加密卡状态',
       ok: c.connected,
       statusText: c.connected ? '正常' : '异常',
-      detail: `卡型号 ${c.model} · 序列号 ${c.serial} · 固件 ${c.firmware}`
-    },
-    {
-      name: '加密卡健康',
-      ok: c.health === '良好',
-      statusText: c.health === '良好' ? '正常' : '警告',
-      detail: `健康状态：${c.health} · 运行时间 ${c.uptime}`
+      detail: `卡型号 ${c.model} · 序列号 ${c.serial} · 固件 ${c.firmware} · 运行时间 ${c.uptime}`
     }
   ]
 })
+
+/** 一键检测仅含：服务接口检测、加密卡检测（无许可证/基础设施/节点维度） */
+const resultCategories = computed(() => {
+  const cats = []
+  if (serviceResults.value.length) {
+    cats.push({
+      name: '服务接口检测',
+      items: serviceResults.value.map((r) => ({
+        name: r.name,
+        label: r.status,
+        tagType: r.status === '正常' ? 'success' : 'danger',
+        metaLines: [
+          `接口地址：${r.url}`,
+          `响应时间：${r.responseTime} · ${r.detail}`
+        ]
+      }))
+    })
+  }
+  if (cardCheckItems.value.length) {
+    cats.push({
+      name: '加密卡检测',
+      items: cardCheckItems.value.map((i) => ({
+        name: i.name,
+        label: i.statusText,
+        tagType: i.ok ? 'success' : i.statusText === '警告' ? 'warning' : 'danger',
+        metaLines: []
+      }))
+    })
+  }
+  return cats
+})
+
+const inspectItemStats = computed(() => {
+  let ok = 0
+  let bad = 0
+  let warn = 0
+  for (const cat of resultCategories.value) {
+    for (const it of cat.items) {
+      if (it.tagType === 'success') ok++
+      else if (it.tagType === 'warning') warn++
+      else bad++
+    }
+  }
+  const total = ok + bad + warn
+  return { total, ok, bad, warn, skipped: 0 }
+})
+
+function exportReport () {
+  if (!summary.value) {
+    ElMessage.warning('请先执行检查')
+    return
+  }
+  ElMessage.success('报告导出为原型占位，实际环境可对接导出接口')
+}
 
 const runDetect = () => {
   if (detectTimer !== null) {
@@ -304,9 +461,13 @@ const runDetect = () => {
 
       if (mode === 'all' || mode === 'service') {
         serviceResults.value = SERVICE_INTERFACE_ROWS.map((r) => ({ ...r }))
+      } else {
+        serviceResults.value = []
       }
       if (mode === 'all' || mode === 'card') {
         cardResult.value = { ...MOCK_CARD }
+      } else {
+        cardResult.value = null
       }
 
       let total = 0
@@ -319,24 +480,25 @@ const runDetect = () => {
       if (mode === 'all' || mode === 'card') {
         const c = cardResult.value
         const cardItems = [
-          !!(c?.connected),
-          c?.health === '良好'
+          !!(c?.connected)
         ]
         total += cardItems.length
         passed += cardItems.filter(Boolean).length
       }
 
+      const failed = total - passed
+      const warning = 0
+
+      categoryExpanded.value = {}
+
       summary.value = {
         total,
         passed,
-        warning: 0,
-        failed: total - passed,
-        time: '2026-04-07 15:42:00'
+        warning,
+        failed,
+        time: '2026-04-07 15:42:00',
+        targetLabel: TARGET_LABEL[detectType.value] || TARGET_LABEL.all
       }
-
-      collapseActive.value = []
-      if (serviceResults.value.length) collapseActive.value.push('service')
-      if (cardResult.value) collapseActive.value.push('card')
     }
   }, 220)
 }
@@ -345,34 +507,140 @@ const runDetect = () => {
 <style lang="scss" scoped>
 @import '@/styles/variables.scss';
 
+.detect {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 汇总卡：无整板背景；置于结果卡内时与下方明细留白 */
+.detect-stat-strip {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+
+  &--in-results {
+    margin-bottom: 4px;
+  }
+}
+
 .detect-card {
   padding-bottom: 8px;
 }
 
-.toolbar {
-  margin-bottom: 20px;
-}
-
-.toolbar-row {
+.results-module__toolbar {
   display: flex;
   align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-  margin-bottom: 16px;
-
-  :deep(.el-radio-group) {
-    flex: 1;
-    min-width: 0;
-  }
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid $border-light;
 }
 
-.toolbar-label {
-  font-weight: 600;
+.results-module__toolbar-title {
+  font-size: 16px;
+  font-weight: bold;
   color: $text-primary;
 }
 
-.toolbar-actions {
-  margin-bottom: 16px;
+.results-module__body {
+  padding-top: 4px;
+}
+
+.results-module__progress {
+  margin-bottom: 8px;
+}
+
+/* 单行 — 左为「检测方式 + 分段」、右为「开始检查」，白底留白 */
+.config-panel {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+  padding: 12px 0 20px;
+  margin-bottom: 4px;
+  background: #fff;
+  border: none;
+  border-radius: 0;
+}
+
+.config-panel__left {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  min-width: 0;
+  flex: 1;
+}
+
+.config-label {
+  font-weight: 500;
+  color: $text-secondary;
+  white-space: nowrap;
+}
+
+/* 示意图：浅灰圆角槽 + 选中项白底蓝字 */
+.check-method-segment {
+  padding: 4px;
+  background: #e8eaed;
+  border-radius: 4px;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  border: none;
+  box-shadow: none;
+
+  :deep(.el-radio-button) {
+    margin: 0;
+  }
+
+  :deep(.el-radio-button__inner) {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    color: $text-secondary;
+    border-radius: 4px !important;
+    padding: 6px 16px;
+    font-weight: 500;
+  }
+
+  :deep(.el-radio-button:first-child .el-radio-button__inner) {
+    border-radius: 4px !important;
+  }
+
+  :deep(.el-radio-button:last-child .el-radio-button__inner) {
+    border-radius: 4px !important;
+  }
+
+  :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) {
+    background: #fff !important;
+    color: var(--el-color-primary) !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+  }
+
+  :deep(.el-radio-button.is-active .el-radio-button__inner) {
+    background: #fff !important;
+    color: var(--el-color-primary) !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+  }
+
+  :deep(.el-radio-button__inner:hover) {
+    color: var(--el-color-primary);
+  }
+}
+
+.config-panel__btn {
+  flex-shrink: 0;
+  border-radius: 4px;
+}
+
+.results-module__hint {
+  border: 1px solid rgba(64, 158, 255, 0.35);
 }
 
 .progress-wrap {
@@ -386,7 +654,7 @@ const runDetect = () => {
 }
 
 .finish-time {
-  margin: -8px 0 16px;
+  margin: 0 0 12px;
   font-size: 13px;
   color: $text-muted;
 }
@@ -395,7 +663,8 @@ const runDetect = () => {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 12px;
-  margin-bottom: 20px;
+  margin-bottom: 10px;
+  border-radius: 0px;
 
   @media (max-width: 1200px) {
     grid-template-columns: repeat(3, 1fr);
@@ -406,15 +675,34 @@ const runDetect = () => {
   }
 }
 
-.stat-card {
+.stat-cards--inspect .stat-card {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 16px 14px;
-  background: #fafafa;
+  padding: 14px 16px;
   border-radius: 8px;
   border: 1px solid $border-light;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
 
+.stat-card--plain .stat-card-body {
+  width: 100%;
+}
+
+.stat-card--tone-ok .stat-card-value.num {
+  color: #52c41a;
+}
+
+.stat-card--tone-warn .stat-card-value.num {
+  color: #faad14;
+}
+
+.stat-card--tone-bad .stat-card-value.num {
+  color: #ff4d4f;
+}
+
+.stat-card--overall {
   &.is-ok {
     border-color: rgba(82, 196, 26, 0.35);
     background: #f6ffed;
@@ -426,7 +714,7 @@ const runDetect = () => {
   }
 
   &.is-bad {
-    border-color: rgba(255, 77, 79, 0.35);
+    border-color: rgba(255, 77, 79, 0.45);
     background: #fff2f0;
   }
 
@@ -445,109 +733,101 @@ const runDetect = () => {
       color: #faad14;
     }
   }
+}
 
-  .stat-card-label {
-    font-size: 12px;
-    color: $text-muted;
-    margin-bottom: 4px;
+.stat-card-label {
+  font-size: 12px;
+  color: $text-muted;
+  margin-bottom: 6px;
+}
+
+.stat-card-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: $text-primary;
+
+  &.num {
+    font-size: 22px;
+    font-weight: 700;
+  }
+}
+
+.stat-card-value--emphasis {
+  font-size: 18px;
+
+  .is-bad & {
+    color: #ff4d4f;
   }
 
-  .stat-card-value {
-    font-size: 16px;
-    font-weight: 600;
-    color: $text-primary;
-
-    &.num {
-      font-size: 22px;
-    }
-  }
-
-  &.stat-ok .stat-card-value.num {
-    color: #52c41a;
-  }
-
-  &.stat-warn .stat-card-value.num {
+  .is-warn & {
     color: #faad14;
   }
 
-  &.stat-bad .stat-card-value.num {
+  .is-ok & {
+    color: #52c41a;
+  }
+}
+
+.stat-suffix {
+  font-size: 14px;
+  font-weight: 600;
+  margin-left: 2px;
+  color: $text-secondary;
+}
+
+/* 检测对象条（示意图灰条） */
+.inspect-target-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 10px 14px;
+  margin-bottom: 0;
+  background: #f5f5f5;
+  border: 1px solid $border-light;
+  border-radius: 4px 4px 0 0;
+  font-size: 13px;
+}
+
+.inspect-target-bar__left {
+  color: $text-secondary;
+  font-weight: 500;
+}
+
+.inspect-target-bar__right {
+  font-weight: 600;
+
+  &--ok {
+    color: #52c41a;
+  }
+
+  &--warn {
+    color: #faad14;
+  }
+
+  &--bad {
     color: #ff4d4f;
   }
 }
 
-.result-node {
-  border: 1px solid $border-color;
-  border-radius: 8px;
-  overflow: hidden;
+/* 明细列表外框（与检测对象条连成一块） */
+.inspect-detail-panel {
+  border: 1px solid $border-light;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
   background: #fff;
-}
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  margin-bottom: 4px;
 
-.result-node-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px 20px;
-  padding: 12px 16px;
-  background: #fafafa;
-  border-bottom: 1px solid $border-light;
-  font-size: 13px;
-
-  .node-title {
-    font-weight: 600;
-    color: $text-primary;
-  }
-
-  .node-meta {
-    color: $text-secondary;
-  }
-
-  .node-counts {
-    margin-left: auto;
-    display: flex;
-    gap: 16px;
-    font-size: 12px;
-
-    .ok {
-      color: #52c41a;
-    }
-
-    .bad {
-      color: #ff4d4f;
-    }
+  &--error {
+    border-color: rgba(255, 77, 79, 0.45);
+    box-shadow: 0 0 0 1px rgba(255, 77, 79, 0.1);
   }
 }
 
-.check-collapse {
-  border: none;
-
-  :deep(.el-collapse-item__header) {
-    padding: 12px 16px;
-    font-weight: 600;
-    background: #fff;
-  }
-
-  :deep(.el-collapse-item__wrap) {
-    border-bottom: 1px solid $border-light;
-  }
-
-  :deep(.el-collapse-item__content) {
-    padding: 0 16px 16px;
-  }
-}
-
-.collapse-title {
-  margin-right: 8px;
-}
-
-.collapse-count {
-  vertical-align: middle;
-}
-
-.check-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 12px 0;
+.inspect-cat {
   border-bottom: 1px solid $border-light;
 
   &:last-child {
@@ -555,42 +835,122 @@ const runDetect = () => {
   }
 }
 
-.check-item-icon {
-  flex-shrink: 0;
-  width: 28px;
-  height: 28px;
+.inspect-cat__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: #fafafa;
+  cursor: pointer;
+  user-select: none;
+
+  &:hover {
+    background: #f5f5f5;
+  }
+}
+
+.inspect-cat__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: $text-primary;
+}
+
+.inspect-cat__badge {
+  font-size: 12px;
+  color: $text-muted;
+  padding: 2px 8px;
+  background: #eee;
+  border-radius: 4px;
+}
+
+.inspect-cat__chevron {
+  margin-left: auto;
+  color: $text-muted;
+  font-size: 16px;
+}
+
+.inspect-cat__body {
+  padding: 0 14px 8px;
+}
+
+.inspect-result-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid $border-light;
+
+  &:first-child {
+    border-top: none;
+  }
+}
+
+.inspect-result-row__icon {
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  flex-shrink: 0;
+  margin-top: 1px;
 
-  &.is-ok {
-    color: #52c41a;
-    background: #f6ffed;
+  &--success {
+    background: #52c41a;
+    color: #fff;
   }
 
-  &.is-bad {
-    color: #ff4d4f;
-    background: #fff2f0;
+  &--warning {
+    background: #faad14;
+    color: #fff;
+  }
+
+  &--danger {
+    background: #ff4d4f;
+    color: #fff;
   }
 }
 
-.check-item-main {
+.inspect-result-row__main {
   flex: 1;
   min-width: 0;
 }
 
-.check-item-name {
+.inspect-result-row__name {
+  font-size: 14px;
   font-weight: 500;
   color: $text-primary;
   margin-bottom: 6px;
+  line-height: 1.4;
 }
 
-.check-item-meta {
+.inspect-result-row__meta {
   font-size: 12px;
   color: $text-muted;
-  line-height: 1.5;
+  line-height: 1.6;
+
+  & + & {
+    margin-top: 2px;
+  }
+}
+
+.inspect-result-row__status {
+  flex-shrink: 0;
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 2px;
+
+  &--success {
+    color: #52c41a;
+  }
+
+  &--warning {
+    color: #faad14;
+  }
+
+  &--danger {
+    color: #ff4d4f;
+  }
 }
 
 </style>

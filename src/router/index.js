@@ -59,12 +59,15 @@ const routes = [
       breadcrumb: [{ label: '签名验签服务' }, { label: '用户证书管理' }]
     }
   },
-  // 签名验签服务 - CA根证管理（顶栏面包屑由页面 Tab 动态设置）
+  // 签名验签服务 - CA根证管理
   {
     path: '/cert/ca',
     name: 'CACert',
     component: () => import('@/views/cert/CACert.vue'),
-    meta: { title: 'CA根证管理', dynamicBreadcrumb: true }
+    meta: {
+      title: 'CA根证管理',
+      breadcrumb: [{ label: '签名验签服务' }, { label: 'CA根证管理' }]
+    }
   },
   // 系统管理 - 白名单配置（应用访问 IP，单一界面）
   {

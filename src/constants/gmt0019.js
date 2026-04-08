@@ -9,11 +9,17 @@ export const KEY_TYPE_OPTIONS_0019 = [
   { value: 'RSA', label: 'RSA' }
 ]
 
-/** 密钥用途（界面取值 1–3） */
-export const KEY_USAGE_OPTIONS_0019 = [
-  { value: 1, label: '加密' },
-  { value: 2, label: '签名' },
-  { value: 3, label: '密钥交换' }
+/** SM2：签名、密钥交换协议、加密 */
+export const KEY_USAGE_OPTIONS_SM2_0019 = [
+  { value: 'sm2_sign', label: '签名' },
+  { value: 'sm2_kex', label: '密钥交换协议' },
+  { value: 'sm2_enc', label: '加密' }
+]
+
+/** RSA：签名、密钥交换（加密） */
+export const KEY_USAGE_OPTIONS_RSA_0019 = [
+  { value: 'rsa_sign', label: '签名' },
+  { value: 'rsa_kex', label: '密钥交换（加密）' }
 ]
 
 /** uiExportFlag[in] */

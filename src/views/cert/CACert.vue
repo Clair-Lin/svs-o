@@ -1,213 +1,134 @@
 <template>
   <div class="ca-cert">
     <div class="page-card">
-      <el-tabs v-model="pageTab" class="ca-cert-page-tabs">
-        <!-- CA 根证列表：按 DN / 有效期搜索 -->
-        <el-tab-pane label="CA根证管理" name="list" lazy>
-          <div class="search-area">
-            <el-form :inline="true" :model="searchForm" class="search-form">
-              <el-form-item label="DN">
-                <el-input
-                  v-model="searchForm.dn"
-                  placeholder="请输入 DN 关键字"
-                  clearable
-                  style="width: 280px"
-                />
-              </el-form-item>
-              <el-form-item label="有效期">
-                <el-date-picker
-                  v-model="searchForm.validityRange"
-                  type="daterange"
-                  range-separator="至"
-                  start-placeholder="开始日期"
-                  end-placeholder="结束日期"
-                  value-format="YYYY-MM-DD"
-                  style="width: 260px"
-                />
-              </el-form-item>
-              <el-form-item>
-                <el-button type="primary" @click="handleSearch">
-                  <el-icon><Search /></el-icon>
-                  查询
-                </el-button>
-                <el-button @click="handleReset">重置</el-button>
-              </el-form-item>
-            </el-form>
-          </div>
-
-          <div class="action-bar">
-            <el-button type="primary" @click="handleImport">
-              导入根证书
-            </el-button>
-          </div>
-
-          <el-table :data="pagedRootList" border stripe>
-            <el-table-column prop="name" label="证书名称" width="200" show-overflow-tooltip />
-            <el-table-column prop="dn" label="DN" min-width="250" show-overflow-tooltip />
-            <el-table-column prop="notBefore" label="生效时间" width="120" />
-            <el-table-column prop="notAfter" label="过期时间" width="120" />
-            <el-table-column prop="trust" label="信任状态" width="100">
-              <template #default="{ row }">
-                <el-switch v-model="row.trust" size="small" />
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" fixed="right" width="220">
-              <template #default="{ row }">
-                <el-button type="primary" size="small" link @click="openDetail(row)">查看</el-button>
-                <el-button type="danger" size="small" link @click="handleDelete(row)">删除</el-button>
-                <el-button type="danger" size="small" link @click="handleAddToBlacklist(row)">
-                  加入黑名单
-                </el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-
-          <div class="pagination">
-            <el-pagination
-              v-model:current-page="listPage"
-              v-model:page-size="listPageSize"
-              background
-              layout="total, sizes, prev, pager, next, jumper"
-              :total="filteredRootList.length"
-              :page-sizes="[10, 20, 50]"
+      <div class="ca-search-toolbar">
+        <div class="filter-row">
+          <div class="filter-item">
+            <span class="filter-label">CA名称</span>
+            <el-input
+              v-model="filterCaName"
+              placeholder="请输入CA名称"
+              clearable
+              class="filter-input"
             />
           </div>
-        </el-tab-pane>
-
-        <el-tab-pane label="黑名单管理" name="blacklist" lazy>
-          <div class="blacklist-toolbar">
-            <el-button @click="handleExportBlacklist">
-              <el-icon><Download /></el-icon>
-              导出黑名单
-            </el-button>
-            <el-button
-              type="danger"
-              :disabled="!selectedBlacklistRows.length"
-              @click="handleBatchRemoveBlacklist"
-            >
-              <el-icon><Close /></el-icon>
-              批量移出黑名单
-            </el-button>
+          <div class="filter-item filter-item--range">
+            <span class="filter-label">有效期</span>
+            <el-date-picker
+              v-model="filterValidityRange"
+              type="daterange"
+              range-separator="至"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+              value-format="YYYY-MM-DD"
+              class="filter-daterange"
+            />
           </div>
-          <el-table
-            :data="blacklistTableRows"
-            border
-            stripe
-            @selection-change="onBlacklistSelectionChange"
-          >
-            <el-table-column type="selection" width="48" />
-            <el-table-column prop="name" label="证书名称" width="200" show-overflow-tooltip />
-            <el-table-column prop="dn" label="DN" min-width="260" show-overflow-tooltip />
-            <el-table-column prop="notAfter" label="过期时间" width="120" />
-            <el-table-column label="操作" fixed="right" width="120">
-              <template #default="{ row }">
-                <el-button type="success" size="small" link @click="handleRemoveFromBlacklist(row)">
-                  移出黑名单
-                </el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-        </el-tab-pane>
-      </el-tabs>
+          <div class="filter-item filter-actions">
+            <el-button type="primary" @click="handleSearch">查询</el-button>
+            <el-button @click="handleReset">重置</el-button>
+          </div>
+        </div>
+      </div>
+
+      <div class="action-bar">
+        <el-button type="primary" @click="openAdd">添加</el-button>
+      </div>
+
+      <el-table :data="filteredList" border stripe>
+        <el-table-column prop="caName" label="CA名称" min-width="160" show-overflow-tooltip />
+        <el-table-column prop="description" label="CA描述" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="certLabel" label="CA证书" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="notBefore" label="生效时间" width="120" align="center" />
+        <el-table-column prop="notAfter" label="过期时间" width="120" align="center" />
+        <el-table-column label="操作" fixed="right" width="140">
+          <template #default="{ row }">
+            <el-button type="primary" size="small" link @click="openDetail(row)">查看</el-button>
+            <el-button type="danger" size="small" link @click="handleDelete(row)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
     </div>
 
-    <el-dialog v-model="importVisible" title="导入根证书" width="500px" destroy-on-close>
-      <el-upload
-        drag
-        action="#"
-        :auto-upload="false"
-        accept=".cer,.crt,.pem,.p7b"
-        :on-change="onImportFileChange"
-      >
-        <el-icon class="el-icon--upload" :size="48"><UploadFilled /></el-icon>
-        <div class="el-upload__text">拖拽文件到此处，或<em>点击上传</em></div>
-        <template #tip>
-          <div class="el-upload__tip">支持 CER、CRT、PEM、P7B</div>
-        </template>
-      </el-upload>
+    <el-dialog v-model="addVisible" title="添加" width="520px" destroy-on-close @closed="resetAddForm">
+      <el-form ref="addFormRef" :model="addForm" :rules="addRules" label-width="100px">
+        <el-form-item label="CA名称" prop="caName">
+          <el-input v-model="addForm.caName" placeholder="请输入CA名称" clearable />
+        </el-form-item>
+        <el-form-item label="CA描述" prop="description">
+          <el-input
+            v-model="addForm.description"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入CA描述"
+            maxlength="500"
+            show-word-limit
+          />
+        </el-form-item>
+        <el-form-item label="生效时间" prop="notBefore">
+          <el-date-picker
+            v-model="addForm.notBefore"
+            type="date"
+            placeholder="选择生效日期"
+            value-format="YYYY-MM-DD"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item label="过期时间" prop="notAfter">
+          <el-date-picker
+            v-model="addForm.notAfter"
+            type="date"
+            placeholder="选择过期日期"
+            value-format="YYYY-MM-DD"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item label="CA证书" prop="certFileName">
+          <el-upload
+            action="#"
+            :auto-upload="false"
+            :limit="1"
+            accept=".cer,.crt,.pem,.p7b"
+            :on-change="onAddCertChange"
+            :on-remove="onAddCertRemove"
+          >
+            <el-button type="primary">选择文件</el-button>
+            <template #tip>
+              <div class="upload-tip">支持 CER、CRT、PEM、P7B</div>
+            </template>
+          </el-upload>
+        </el-form-item>
+      </el-form>
       <template #footer>
-        <el-button @click="importVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmImport">确定</el-button>
+        <el-button @click="addVisible = false">取消</el-button>
+        <el-button type="primary" @click="confirmAdd">确定</el-button>
       </template>
     </el-dialog>
 
-    <el-dialog v-model="detailVisible" title="根证书详情" width="640px">
+    <el-dialog v-model="detailVisible" title="CA根证详情" width="520px">
       <el-descriptions v-if="currentRow" :column="1" border>
-        <el-descriptions-item label="证书名称">{{ currentRow.name }}</el-descriptions-item>
-        <el-descriptions-item label="DN">{{ currentRow.dn }}</el-descriptions-item>
+        <el-descriptions-item label="CA名称">{{ currentRow.caName }}</el-descriptions-item>
+        <el-descriptions-item label="CA描述">{{ currentRow.description || '—' }}</el-descriptions-item>
+        <el-descriptions-item label="CA证书">{{ currentRow.certLabel }}</el-descriptions-item>
         <el-descriptions-item label="生效时间">{{ currentRow.notBefore }}</el-descriptions-item>
         <el-descriptions-item label="过期时间">{{ currentRow.notAfter }}</el-descriptions-item>
-        <el-descriptions-item label="信任状态">{{ currentRow.trust ? '信任' : '不信任' }}</el-descriptions-item>
-        <el-descriptions-item label="黑名单">{{ currentRow.inBlacklist ? '是' : '否' }}</el-descriptions-item>
       </el-descriptions>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch, watchEffect } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Upload, UploadFilled, Search, Download, Close } from '@element-plus/icons-vue'
-import { setPageBreadcrumbItems } from '@/composables/pageBreadcrumb'
 
-const pageTab = ref('list')
-const activeTabBreadcrumb = computed(() =>
-  pageTab.value === 'blacklist' ? '黑名单管理' : 'CA根证管理'
-)
+let idSeq = 1
 
-watchEffect(() => {
-  setPageBreadcrumbItems([
-    { label: '签名验签服务' },
-    { label: 'CA根证管理' },
-    { label: activeTabBreadcrumb.value }
-  ])
-})
+const filterCaName = ref('')
+const queryCaName = ref('')
+const filterValidityRange = ref(null)
+const queryValidityRange = ref(null)
 
-const listPage = ref(1)
-const listPageSize = ref(10)
-const importVisible = ref(false)
-const detailVisible = ref(false)
-const currentRow = ref(null)
-const selectedBlacklistRows = ref([])
-
-const searchForm = reactive({
-  dn: '',
-  validityRange: []
-})
-
-function createInitialRows () {
-  return [
-    {
-      id: '1',
-      name: '测试CA根证书',
-      dn: 'CN=Test CA,O=Test,C=CN',
-      notBefore: '2020-01-01',
-      notAfter: '2030-01-01',
-      trust: true,
-      inBlacklist: false
-    },
-    {
-      id: '2',
-      name: '国密CA根证书',
-      dn: 'CN=GM CA,O=GM,C=CN',
-      notBefore: '2021-06-01',
-      notAfter: '2031-06-01',
-      trust: true,
-      inBlacklist: false
-    },
-    {
-      id: '3',
-      name: '已停用根证（示例）',
-      dn: 'CN=Legacy CA,O=Old,C=CN',
-      notBefore: '2018-01-01',
-      notAfter: '2025-12-31',
-      trust: false,
-      inBlacklist: true
-    }
-  ]
-}
-
-const allRows = ref(createInitialRows())
+const list = ref([])
 
 function parseYmd (s) {
   if (!s) return null
@@ -215,17 +136,16 @@ function parseYmd (s) {
   return Number.isNaN(t) ? null : t
 }
 
-/** 根证列表 Tab：不展示已在黑名单中的记录 */
-const filteredRootList = computed(() => {
-  const [start, end] = searchForm.validityRange || []
+/** 证书有效期 [notBefore, notAfter] 与查询区间有交集则保留 */
+const filteredList = computed(() => {
+  const q = queryCaName.value.trim().toLowerCase()
+  const range = queryValidityRange.value
+  const [start, end] = Array.isArray(range) && range.length === 2 ? range : [null, null]
   const startT = start ? parseYmd(start) : null
   const endT = end ? parseYmd(end) : null
 
-  return allRows.value.filter((row) => {
-    if (row.inBlacklist) return false
-    if (searchForm.dn && !row.dn.toLowerCase().includes(searchForm.dn.trim().toLowerCase())) {
-      return false
-    }
+  return list.value.filter((row) => {
+    if (q && !row.caName.toLowerCase().includes(q)) return false
     if (startT != null && endT != null) {
       const nb = parseYmd(row.notBefore)
       const na = parseYmd(row.notAfter)
@@ -236,40 +156,97 @@ const filteredRootList = computed(() => {
   })
 })
 
-const pagedRootList = computed(() => {
-  const list = filteredRootList.value
-  const start = (listPage.value - 1) * listPageSize.value
-  return list.slice(start, start + listPageSize.value)
+const addVisible = ref(false)
+const detailVisible = ref(false)
+const currentRow = ref(null)
+const addFormRef = ref(null)
+
+const addForm = reactive({
+  caName: '',
+  description: '',
+  notBefore: '',
+  notAfter: '',
+  certFileName: ''
 })
 
-watch(filteredRootList, (list) => {
-  const pages = Math.max(1, Math.ceil(list.length / listPageSize.value) || 1)
-  if (listPage.value > pages) listPage.value = pages
-})
+const addRules = {
+  caName: [{ required: true, message: '请输入CA名称', trigger: 'blur' }],
+  notBefore: [{ required: true, message: '请选择生效时间', trigger: 'change' }],
+  notAfter: [
+    { required: true, message: '请选择过期时间', trigger: 'change' },
+    {
+      validator: (_rule, val, cb) => {
+        if (!val || !addForm.notBefore) {
+          cb()
+          return
+        }
+        const a = parseYmd(addForm.notBefore)
+        const b = parseYmd(val)
+        if (a != null && b != null && b < a) {
+          cb(new Error('过期时间不能早于生效时间'))
+          return
+        }
+        cb()
+      },
+      trigger: 'change'
+    }
+  ],
+  certFileName: [{ required: true, message: '请选择CA证书文件', trigger: 'change' }]
+}
 
-const blacklistTableRows = computed(() => allRows.value.filter((r) => r.inBlacklist))
+function resetAddForm () {
+  addForm.caName = ''
+  addForm.description = ''
+  addForm.notBefore = ''
+  addForm.notAfter = ''
+  addForm.certFileName = ''
+  addFormRef.value?.resetFields()
+}
 
 const handleSearch = () => {
-  listPage.value = 1
-  ElMessage.success('已按条件筛选（原型演示）')
+  queryCaName.value = filterCaName.value
+  queryValidityRange.value = filterValidityRange.value
+    ? [...filterValidityRange.value]
+    : null
 }
 
 const handleReset = () => {
-  Object.assign(searchForm, { dn: '', validityRange: [] })
-  listPage.value = 1
+  filterCaName.value = ''
+  queryCaName.value = ''
+  filterValidityRange.value = null
+  queryValidityRange.value = null
 }
 
-const handleImport = () => {
-  importVisible.value = true
+const openAdd = () => {
+  resetAddForm()
+  addVisible.value = true
 }
 
-const onImportFileChange = () => {
-  // 原型：仅演示上传区域
+function onAddCertChange (uploadFile) {
+  addForm.certFileName = uploadFile?.name || ''
+  addFormRef.value?.validateField('certFileName')
 }
 
-const confirmImport = () => {
-  ElMessage.success('导入任务已提交（原型演示）')
-  importVisible.value = false
+function onAddCertRemove () {
+  addForm.certFileName = ''
+}
+
+async function confirmAdd () {
+  try {
+    await addFormRef.value?.validate()
+  } catch {
+    return
+  }
+  list.value.push({
+    id: String(idSeq++),
+    caName: addForm.caName.trim(),
+    description: addForm.description.trim(),
+    certLabel: addForm.certFileName,
+    notBefore: addForm.notBefore,
+    notAfter: addForm.notAfter
+  })
+  addVisible.value = false
+  ElMessage.success('添加成功（原型演示）')
 }
 
 const openDetail = (row) => {
@@ -278,67 +255,65 @@ const openDetail = (row) => {
 }
 
 const handleDelete = (row) => {
-  ElMessageBox.confirm(`确定删除根证书「${row.name}」？`, '提示', {
-    type: 'warning'
-  })
+  ElMessageBox.confirm(`确定删除「${row.caName}」？`, '提示', { type: 'warning' })
     .then(() => {
-      allRows.value = allRows.value.filter((r) => r.id !== row.id)
+      list.value = list.value.filter((r) => r.id !== row.id)
       ElMessage.success('已删除')
     })
     .catch(() => {})
 }
-
-const handleAddToBlacklist = (row) => {
-  row.inBlacklist = true
-  row.trust = false
-  ElMessage.success('已加入黑名单')
-}
-
-const handleRemoveFromBlacklist = (row) => {
-  row.inBlacklist = false
-  ElMessage.success('已移出黑名单')
-}
-
-const onBlacklistSelectionChange = (rows) => {
-  selectedBlacklistRows.value = rows
-}
-
-const handleExportBlacklist = () => {
-  ElMessage.success('黑名单导出成功（原型演示）')
-}
-
-const handleBatchRemoveBlacklist = () => {
-  const n = selectedBlacklistRows.value.length
-  selectedBlacklistRows.value.forEach((r) => {
-    r.inBlacklist = false
-  })
-  selectedBlacklistRows.value = []
-  ElMessage.success(`已将 ${n} 条记录移出黑名单`)
-}
 </script>
 
 <style lang="scss" scoped>
-.ca-cert-page-tabs {
-  :deep(.el-tabs__header) {
-    margin-bottom: 16px;
-  }
+@import '@/styles/variables.scss';
+
+.ca-search-toolbar {
+  background: $card-bg;
+  padding: $spacing-md;
+  margin-bottom: $spacing-sm;
 }
 
-.search-area {
-  background: #fafafa;
-  padding: 16px;
-  border-radius: 4px;
-  margin-bottom: 16px;
-}
-
-.search-form {
+.filter-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: $spacing-md $spacing-lg;
+  align-items: center;
+}
 
-  .el-form-item {
-    margin-bottom: 0;
-  }
+.filter-item {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: $spacing-xs;
+}
+
+.filter-label {
+  flex-shrink: 0;
+  font-size: $font-size-base;
+  color: $text-secondary;
+  white-space: nowrap;
+}
+
+.filter-input {
+  width: 280px;
+}
+
+.filter-item--range {
+  flex: 1 1 320px;
+  min-width: 280px;
+}
+
+.filter-daterange {
+  flex: 1;
+  min-width: 240px;
+  max-width: 320px;
+}
+
+.filter-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: $spacing-xs;
 }
 
 .action-bar {
@@ -347,15 +322,9 @@ const handleBatchRemoveBlacklist = () => {
   margin-bottom: 16px;
 }
 
-.blacklist-toolbar {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.pagination {
-  margin-top: 16px;
-  display: flex;
-  justify-content: flex-end;
+.upload-tip {
+  margin-top: 8px;
+  font-size: 12px;
+  color: $text-secondary;
 }
 </style>

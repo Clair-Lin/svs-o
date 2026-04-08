@@ -1,33 +1,51 @@
 <template>
   <div class="key-panel">
-    <div class="filter-bar">
-      <el-input
-        v-model="filterKeyId"
-        placeholder="请输入密钥ID"
-        clearable
-        class="filter-input"
-      />
-      <el-select v-model="filterAlgorithm" placeholder="密钥算法" class="filter-select">
-        <el-option label="全部" value="" />
-        <el-option label="RSA_2048" value="RSA_2048" />
-        <el-option label="SM2_256" value="SM2_256" />
-      </el-select>
-      <el-select v-model="filterUsage" placeholder="密钥用途" class="filter-select">
-        <el-option label="全部" value="" />
-        <el-option label="签名验签" value="签名验签" />
-        <el-option label="加密解密" value="加密解密" />
-      </el-select>
-      <el-date-picker
-        v-model="filterDateRange"
-        type="datetimerange"
-        range-separator="至"
-        start-placeholder="开始时间"
-        end-placeholder="结束时间"
-        value-format="x"
-        class="filter-daterange"
-      />
-      <el-button type="primary" @click="handleSearch">查询</el-button>
-      <el-button @click="handleReset">重置</el-button>
+    <div class="key-search-toolbar">
+      <div class="filter-row">
+        <div class="filter-item">
+          <span class="filter-label">密钥ID</span>
+          <el-input
+            v-model="filterKeyId"
+            placeholder="请输入密钥ID"
+            clearable
+            class="filter-input"
+          />
+        </div>
+        <div class="filter-item">
+          <span class="filter-label">密码算法</span>
+          <el-select v-model="filterAlgorithm" placeholder="全部" class="filter-select">
+            <el-option label="全部" value="" />
+            <el-option label="RSA_2048" value="RSA_2048" />
+            <el-option label="SM2_256" value="SM2_256" />
+          </el-select>
+        </div>
+        <div class="filter-item">
+          <span class="filter-label">密钥用途</span>
+          <el-select v-model="filterUsage" placeholder="全部" class="filter-select filter-select--usage">
+            <el-option label="全部" value="" />
+            <el-option label="签名" value="签名" />
+            <el-option label="密钥交换协议" value="密钥交换协议" />
+            <el-option label="加密" value="加密" />
+            <el-option label="密钥交换（加密）" value="密钥交换（加密）" />
+          </el-select>
+        </div>
+        <div class="filter-item filter-item--range">
+          <span class="filter-label">添加时间</span>
+          <el-date-picker
+            v-model="filterDateRange"
+            type="datetimerange"
+            range-separator="-"
+            start-placeholder="开始时间"
+            end-placeholder="结束时间"
+            value-format="x"
+            class="filter-daterange"
+          />
+        </div>
+        <div class="filter-item filter-actions">
+          <el-button type="primary" @click="handleSearch">查询</el-button>
+          <el-button @click="handleReset">重置</el-button>
+        </div>
+      </div>
     </div>
 
     <div class="action-bar">
@@ -39,15 +57,8 @@
       <el-table-column prop="index" label="密钥索引" width="100" align="center" />
       <el-table-column prop="keyId" label="密钥ID" min-width="160" show-overflow-tooltip />
       <el-table-column prop="algorithmSpec" label="密钥算法" width="120" />
-      <el-table-column prop="usageLabel" label="密钥用途" width="120" />
-      <el-table-column label="副本状态" width="120" align="center">
-        <template #default="{ row }">
-          <span class="replica-text">{{ row.replicaCurrent }} / {{ row.replicaTotal }}</span>
-          <el-tooltip content="已同步副本数 / 预期副本数" placement="top">
-            <el-icon class="replica-help"><QuestionFilled /></el-icon>
-          </el-tooltip>
-        </template>
-      </el-table-column>
+      <el-table-column prop="usageLabel" label="密钥用途" width="140" show-overflow-tooltip />
+      <el-table-column prop="exportableLabel" label="是否可导出" width="110" align="center" />
       <el-table-column prop="addedTime" label="添加时间" width="180" />
       <el-table-column label="操作" fixed="right" width="320">
         <template #default="{ row }">
@@ -79,9 +90,6 @@
       :close-on-click-modal="false"
     >
       <el-form ref="formRef" :model="keyForm" :rules="keyRules" label-width="120px">
-        <el-form-item label="应用接口句柄" prop="hAppHandle">
-          <el-input v-model="keyForm.hAppHandle" placeholder="hAppHandle[in]" clearable />
-        </el-form-item>
         <el-form-item label="密钥容器名" prop="pucContainerName">
           <el-input v-model="keyForm.pucContainerName" placeholder="pucContainerName[in]" clearable />
         </el-form-item>
@@ -90,10 +98,20 @@
             v-model="keyForm.keyType"
             style="width: 100%"
             placeholder="请选择密钥类型"
-            @change="syncKeyLengthForType"
+            @change="syncKeyTypeDerivedFields"
           >
             <el-option
               v-for="opt in KEY_TYPE_OPTIONS_0019"
+              :key="opt.value"
+              :label="opt.label"
+              :value="opt.value"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="密钥用途" prop="keyUsage">
+          <el-select v-model="keyForm.keyUsage" style="width: 100%" placeholder="请选择密钥用途">
+            <el-option
+              v-for="opt in currentKeyUsageOptions"
               :key="opt.value"
               :label="opt.label"
               :value="opt.value"
@@ -110,16 +128,6 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="密钥用途" prop="keyUsage">
-          <el-select v-model="keyForm.keyUsage" style="width: 100%" placeholder="请选择密钥用途">
-            <el-option
-              v-for="opt in KEY_USAGE_OPTIONS_0019"
-              :key="opt.value"
-              :label="opt.label"
-              :value="opt.value"
-            />
-          </el-select>
-        </el-form-item>
         <el-form-item label="导出" prop="uiExportFlag">
           <el-radio-group v-model="keyForm.uiExportFlag">
             <el-radio
@@ -130,6 +138,15 @@
               {{ opt.label }}
             </el-radio>
           </el-radio-group>
+        </el-form-item>
+        <el-form-item label="密钥访问口令" prop="password">
+          <el-input
+            v-model="keyForm.password"
+            type="password"
+            placeholder="请输入密钥访问口令"
+            show-password
+            autocomplete="new-password"
+          />
         </el-form-item>
       </el-form>
 
@@ -162,14 +179,12 @@
           <span class="detail-p2-value">{{ currentKey.usageLabel }}</span>
         </div>
         <div class="detail-p2-row">
-          <span class="detail-p2-label">副本状态</span>
-          <span class="detail-p2-value detail-p2-replica">
-            {{ currentKey.replicaCurrent }} / {{ currentKey.replicaTotal }}
-          </span>
+          <span class="detail-p2-label">是否可导出</span>
+          <span class="detail-p2-value">{{ currentKey.exportableLabel }}</span>
         </div>
         <div class="detail-p2-row">
           <span class="detail-p2-label">添加时间</span>
-          <span class="detail-p2-value">{{ currentKey.addedTimeMs }}</span>
+          <span class="detail-p2-value">{{ currentKey.addedTime }}</span>
         </div>
       </div>
     </el-dialog>
@@ -179,10 +194,10 @@
 <script setup>
 import { ref, reactive, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { QuestionFilled } from '@element-plus/icons-vue'
 import {
   KEY_TYPE_OPTIONS_0019,
-  KEY_USAGE_OPTIONS_0019,
+  KEY_USAGE_OPTIONS_SM2_0019,
+  KEY_USAGE_OPTIONS_RSA_0019,
   KEY_LENGTHS_BY_TYPE_0019,
   EXPORT_FLAG_OPTIONS
 } from '@/constants/gmt0019.js'
@@ -202,30 +217,41 @@ const formRef = ref(null)
 const keyForm = reactive({
   keyType: 'SM2',
   keyLength: 256,
-  keyUsage: 2,
-  hAppHandle: '',
+  keyUsage: 'sm2_sign',
   pucContainerName: '',
-  uiExportFlag: 0
+  uiExportFlag: 0,
+  password: ''
 })
+
+const currentKeyUsageOptions = computed(() =>
+  keyForm.keyType === 'RSA' ? KEY_USAGE_OPTIONS_RSA_0019 : KEY_USAGE_OPTIONS_SM2_0019
+)
 
 const availableKeyLengths = computed(
   () => KEY_LENGTHS_BY_TYPE_0019[keyForm.keyType] ?? [256]
 )
 
-function syncKeyLengthForType () {
+function syncKeyTypeDerivedFields () {
   const list = KEY_LENGTHS_BY_TYPE_0019[keyForm.keyType]
   if (list?.length && !list.includes(keyForm.keyLength)) {
     keyForm.keyLength = list[0]
+  }
+  const usageOpts = currentKeyUsageOptions.value
+  if (usageOpts.length && !usageOpts.some((o) => o.value === keyForm.keyUsage)) {
+    keyForm.keyUsage = usageOpts[0].value
   }
 }
 
 const keyRules = {
   keyType: [{ required: true, message: '请选择密钥类型', trigger: 'change' }],
   keyLength: [{ required: true, message: '请选择密钥长度', trigger: 'change' }],
-  hAppHandle: [{ required: true, message: '请输入应用接口句柄', trigger: 'blur' }],
   pucContainerName: [{ required: true, message: '请输入密钥容器名', trigger: 'blur' }],
   keyUsage: [{ required: true, message: '请选择密钥用途', trigger: 'change' }],
-  uiExportFlag: [{ required: true, message: '请选择是否导出', trigger: 'change' }]
+  uiExportFlag: [{ required: true, message: '请选择是否导出', trigger: 'change' }],
+  password: [
+    { required: true, message: '请输入密钥访问口令', trigger: 'blur' },
+    { min: 6, max: 32, message: '长度在 6 到 32 个字符', trigger: 'blur' }
+  ]
 }
 
 const keyList = ref([
@@ -233,9 +259,9 @@ const keyList = ref([
     index: 102,
     keyId: '1763124279630301',
     algorithmSpec: 'RSA_2048',
-    usageLabel: '签名验签',
-    replicaCurrent: 1,
-    replicaTotal: 1,
+    usageLabel: '签名',
+    exportableLabel: '可导出',
+    uiExportFlag: 1,
     addedTime: '2025-11-14 20:44:39',
     addedTimeMs: 1763124279000
   },
@@ -243,9 +269,9 @@ const keyList = ref([
     index: 101,
     keyId: '1763124100123456',
     algorithmSpec: 'SM2_256',
-    usageLabel: '签名验签',
-    replicaCurrent: 1,
-    replicaTotal: 1,
+    usageLabel: '密钥交换协议',
+    exportableLabel: '不可导出',
+    uiExportFlag: 0,
     addedTime: '2025-11-14 18:22:10',
     addedTimeMs: 1763118130000
   }
@@ -293,10 +319,10 @@ const handleCreate = () => {
   Object.assign(keyForm, {
     keyType: 'SM2',
     keyLength: 256,
-    keyUsage: 2,
-    hAppHandle: '',
+    keyUsage: 'sm2_sign',
     pucContainerName: '',
-    uiExportFlag: 0
+    uiExportFlag: 0,
+    password: ''
   })
   createDialogVisible.value = true
 }
@@ -356,12 +382,36 @@ const handleViewPassword = () => {
 <style lang="scss" scoped>
 @import '@/styles/variables.scss';
 
-.filter-bar {
+.key-search-toolbar {
+  background: $card-bg;
+  padding: $spacing-md;
+  margin-bottom: $spacing-sm;
+}
+
+.filter-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: $spacing-md $spacing-lg;
   align-items: center;
-  margin-bottom: 16px;
+}
+
+.filter-item {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: $spacing-xs;
+}
+
+.filter-item--range {
+  flex: 1 1 320px;
+  min-width: 280px;
+}
+
+.filter-label {
+  flex-shrink: 0;
+  font-size: $font-size-base;
+  color: $text-secondary;
+  white-space: nowrap;
 }
 
 .filter-input {
@@ -372,25 +422,27 @@ const handleViewPassword = () => {
   width: 140px;
 }
 
+.filter-select--usage {
+  width: 168px;
+}
+
 .filter-daterange {
-  width: 360px;
+  flex: 1;
+  min-width: 280px;
+  max-width: 400px;
+}
+
+.filter-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: $spacing-xs;
 }
 
 .action-bar {
   display: flex;
   gap: 12px;
   margin-bottom: 16px;
-}
-
-.replica-text {
-  margin-right: 4px;
-}
-
-.replica-help {
-  font-size: 14px;
-  color: $text-secondary;
-  vertical-align: middle;
-  cursor: help;
 }
 
 .pagination {
@@ -429,11 +481,6 @@ const handleViewPassword = () => {
   font-size: 14px;
   line-height: 22px;
   word-break: break-all;
-}
-
-.detail-p2-replica {
-  color: #52c41a;
-  font-weight: 500;
 }
 
 </style>

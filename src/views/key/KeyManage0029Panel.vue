@@ -1,33 +1,52 @@
 <template>
   <div class="key-panel">
-    <div class="filter-bar">
-      <el-input
-        v-model="filterKeyId"
-        placeholder="请输入密钥ID"
-        clearable
-        class="filter-input"
-      />
-      <el-select v-model="filterAlgorithm" placeholder="密钥算法" class="filter-select">
-        <el-option label="全部" value="" />
-        <el-option label="SM2" value="SM2" />
-        <el-option label="RSA" value="RSA" />
-      </el-select>
-      <el-select v-model="filterUsage" placeholder="密钥用途" class="filter-select">
-        <el-option label="全部" value="" />
-        <el-option label="签名验签" value="签名验签" />
-        <el-option label="加密解密" value="加密解密" />
-      </el-select>
-      <el-date-picker
-        v-model="filterDateRange"
-        type="datetimerange"
-        range-separator="至"
-        start-placeholder="开始时间"
-        end-placeholder="结束时间"
-        value-format="x"
-        class="filter-daterange"
-      />
-      <el-button type="primary" @click="handleSearch">查询</el-button>
-      <el-button @click="handleReset">重置</el-button>
+    <div class="key-search-toolbar">
+      <div class="filter-row">
+        <div class="filter-item">
+          <span class="filter-label">密钥ID</span>
+          <el-input
+            v-model="filterKeyId"
+            placeholder="请输入密钥ID"
+            clearable
+            class="filter-input"
+          />
+        </div>
+        <div class="filter-item">
+          <span class="filter-label">密码算法</span>
+          <el-select v-model="filterAlgorithm" placeholder="全部" class="filter-select">
+            <el-option label="全部" value="" />
+            <el-option label="SM2" value="SM2" />
+            <el-option label="RSA" value="RSA" />
+            <el-option label="SM4" value="SM4" />
+            <el-option label="3DES" value="3DES" />
+            <el-option label="AES" value="AES" />
+          </el-select>
+        </div>
+        <div class="filter-item">
+          <span class="filter-label">密钥用途</span>
+          <el-select v-model="filterUsage" placeholder="全部" class="filter-select">
+            <el-option label="全部" value="" />
+            <el-option label="签名验签" value="签名验签" />
+            <el-option label="加密解密" value="加密解密" />
+          </el-select>
+        </div>
+        <div class="filter-item filter-item--range">
+          <span class="filter-label">添加时间</span>
+          <el-date-picker
+            v-model="filterDateRange"
+            type="datetimerange"
+            range-separator="-"
+            start-placeholder="开始时间"
+            end-placeholder="结束时间"
+            value-format="x"
+            class="filter-daterange"
+          />
+        </div>
+        <div class="filter-item filter-actions">
+          <el-button type="primary" @click="handleSearch">查询</el-button>
+          <el-button @click="handleReset">重置</el-button>
+        </div>
+      </div>
     </div>
 
     <div class="action-bar">
@@ -76,11 +95,16 @@
           <el-select v-model="keyForm.algorithm" style="width: 100%" @change="handleAlgorithmChange">
             <el-option label="SM2" value="SM2" />
             <el-option label="RSA" value="RSA" />
+            <el-option label="SM4" value="SM4" />
+            <el-option label="3DES" value="3DES" />
+            <el-option label="AES" value="AES" />
           </el-select>
         </el-form-item>
         <el-form-item label="密钥用途" prop="usage">
           <el-checkbox-group v-model="keyForm.usage">
-            <el-checkbox label="签名验签">签名验签</el-checkbox>
+            <el-checkbox label="签名验签" :disabled="isSymmetricKeyAlgorithm">
+              签名验签
+            </el-checkbox>
             <el-checkbox label="加密解密">加密解密</el-checkbox>
           </el-checkbox-group>
         </el-form-item>
@@ -172,20 +196,31 @@ const keyRules = {
   ]
 }
 
+/** 各算法可选密钥长度（位），与算法类型一致 */
+const KEY_SIZES_BY_ALGORITHM = {
+  SM2: [256],
+  RSA: [2048],
+  SM4: [128],
+  '3DES': [112],
+  AES: [128]
+}
+
 const availableSizes = computed(() => {
-  switch (keyForm.algorithm) {
-    case 'RSA':
-      return [2048, 3072, 4096]
-    case 'SM2':
-      return [256]
-    default:
-      return [256]
-  }
+  return KEY_SIZES_BY_ALGORITHM[keyForm.algorithm] ?? [256]
 })
 
+/** SM4 / 3DES / AES 仅支持加密解密 */
+const SYMMETRIC_ALGORITHMS = ['SM4', '3DES', 'AES']
+const isSymmetricKeyAlgorithm = computed(() =>
+  SYMMETRIC_ALGORITHMS.includes(keyForm.algorithm)
+)
+
 function handleAlgorithmChange () {
-  if (keyForm.algorithm === 'SM2') keyForm.keySize = 256
-  else if (keyForm.algorithm === 'RSA') keyForm.keySize = 2048
+  const sizes = KEY_SIZES_BY_ALGORITHM[keyForm.algorithm]
+  keyForm.keySize = sizes?.length ? sizes[0] : 256
+  if (isSymmetricKeyAlgorithm.value) {
+    keyForm.usage = ['加密解密']
+  }
 }
 
 const keyList = ref([
@@ -307,12 +342,36 @@ const handleViewPassword = () => {
 <style lang="scss" scoped>
 @import '@/styles/variables.scss';
 
-.filter-bar {
+.key-search-toolbar {
+  background: $card-bg;
+  padding: $spacing-md;
+  margin-bottom: $spacing-sm;
+}
+
+.filter-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: $spacing-md $spacing-lg;
   align-items: center;
-  margin-bottom: 16px;
+}
+
+.filter-item {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: $spacing-xs;
+}
+
+.filter-item--range {
+  flex: 1 1 320px;
+  min-width: 280px;
+}
+
+.filter-label {
+  flex-shrink: 0;
+  font-size: $font-size-base;
+  color: $text-secondary;
+  white-space: nowrap;
 }
 
 .filter-input {
@@ -324,7 +383,16 @@ const handleViewPassword = () => {
 }
 
 .filter-daterange {
-  width: 360px;
+  flex: 1;
+  min-width: 180px;
+  max-width: 300px;
+}
+
+.filter-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: $spacing-xs;
 }
 
 .action-bar {

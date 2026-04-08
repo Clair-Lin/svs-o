@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="dashboard">
     <!-- <div class="page-card monitor-intro">
       <div class="card-title">监控总览</div>
@@ -109,44 +109,95 @@
     </div>
 
     <h3 class="section-heading">业务统计</h3>
-    <div class="page-card">
-      <div class="card-title">业务指标（示例数据）</div>
-      <div class="biz-stats-grid">
-        <div v-for="item in businessStats" :key="item.label" class="biz-stat-item">
-          <div class="biz-stat-label">{{ item.label }}</div>
-          <div class="biz-stat-value">{{ item.value }}</div>
-          <div v-if="item.unit" class="biz-stat-unit">{{ item.unit }}</div>
+    <div class="biz-stats-module">
+      <div class="page-card biz-fixed-card">
+        <div class="card-title">数据统计
+        </div>
+        <div class="biz-stat-strip">
+          <div
+            v-for="item in businessStatsFixed"
+            :key="item.label"
+            class="biz-stat-strip__cell"
+          >
+            <div class="biz-stat-strip__label">{{ item.label }}</div>
+            <div class="biz-stat-strip__value">{{ item.value }}</div>
+            <div v-if="item.unit" class="biz-stat-strip__unit">{{ item.unit }}</div>
+          </div>
         </div>
       </div>
-    </div>
 
-    <h3 class="section-heading">服务与连接</h3>
-    <div class="page-card service-status">
-      <div class="card-title">服务状态</div>
-      <el-table :data="serviceList" size="small" border>
-        <el-table-column prop="name" label="服务名称" width="150" />
-        <el-table-column prop="port" label="端口" width="80" />
-        <el-table-column prop="status" label="状态" width="80">
-          <template #default="{ row }">
-            <span class="status-tag" :class="row.status === '运行中' ? 'success' : 'danger'">
-              {{ row.status }}
-            </span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="connections" label="当前连接" width="100" />
-        <el-table-column prop="totalRequests" label="总请求数" width="120" />
-        <el-table-column prop="successRate" label="成功率" width="100">
-          <template #default="{ row }">
-            <el-progress
-              :percentage="row.successRate"
-              :stroke-width="10"
-              :color="row.successRate > 95 ? '#52c41a' : '#faad14'"
-            />
-          </template>
-        </el-table-column>
-        <el-table-column prop="avgResponseTime" label="平均响应" width="100" />
-        <el-table-column prop="uptime" label="运行时间" />
-      </el-table>
+      <div class="page-card biz-timed-card">
+        <div class="card-title">业务数据
+        </div>
+        <div class="biz-time-toolbar biz-time-toolbar--embedded">
+          <span class="biz-time-toolbar-label">时间维度</span>
+          <el-button-group class="biz-preset-group">
+            <el-button
+              v-for="p in bizPresetOptions"
+              :key="p.key"
+              :type="bizTimePreset === p.key ? 'primary' : 'default'"
+              @click="applyBizPreset(p.key)"
+            >
+              {{ p.label }}
+            </el-button>
+          </el-button-group>
+          <el-date-picker
+            v-model="bizDateRange"
+            type="daterange"
+            unlink-panels
+            size="small"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            value-format="YYYY-MM-DD"
+            class="biz-date-range"
+            @change="onBizDateRangeChange"
+          />
+        </div>
+        <div class="biz-stat-strip">
+          <div
+            v-for="item in businessStatsTimed"
+            :key="item.label"
+            class="biz-stat-strip__cell"
+          >
+            <div class="biz-stat-strip__label-row">
+              <span class="biz-stat-strip__label">{{ item.label }}</span>
+              <el-tooltip
+                v-if="item.showDetailTooltip"
+                effect="dark"
+                placement="top"
+                popper-class="biz-detail-tooltip"
+              >
+                <el-icon class="biz-stat-strip__info-icon"><InfoFilled /></el-icon>
+                <template #content>
+                  <div class="biz-detail-tooltip-grid">
+                    <div
+                      v-for="line in item.detailLinesP1"
+                      :key="line"
+                      class="biz-detail-tooltip__line"
+                    >
+                      {{ line }}
+                    </div>
+                    <div
+                      v-for="line in item.detailLinesP7"
+                      :key="line"
+                      class="biz-detail-tooltip__line"
+                    >
+                      {{ line }}
+                    </div>
+                  </div>
+                </template>
+              </el-tooltip>
+            </div>
+            <div class="biz-stat-split">
+              <div class="biz-stat-split__line biz-stat-split__line--total">总数：{{ item.totalValue }}</div>
+              <div class="biz-stat-split__line biz-stat-split__line--success">成功：{{ item.successValue }}</div>
+              <div class="biz-stat-split__line biz-stat-split__line--danger">失败：{{ item.failValue }}</div>
+            </div>
+            <div v-if="item.unit" class="biz-stat-strip__unit">{{ item.unit }}</div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <template v-if="showAlarmSection">
@@ -181,9 +232,225 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import * as echarts from 'echarts'
-import { Bell } from '@element-plus/icons-vue'
+import { Bell, InfoFilled } from '@element-plus/icons-vue'
+
+const pad2 = (n) => String(n).padStart(2, '0')
+
+const toYMD = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
+
+const parseYMD = (s) => {
+  const [y, m, day] = s.split('-').map(Number)
+  return new Date(y, m - 1, day)
+}
+
+const addDays = (ymdStr, delta) => {
+  const d = parseYMD(ymdStr)
+  d.setDate(d.getDate() + delta)
+  return toYMD(d)
+}
+
+const daysInclusiveRange = (startStr, endStr) => {
+  const a = parseYMD(startStr).getTime()
+  const b = parseYMD(endStr).getTime()
+  return Math.max(1, Math.round((b - a) / 86400000) + 1)
+}
+
+const formatInt = (n) => new Intl.NumberFormat('zh-CN').format(Math.max(0, Math.round(n)))
+
+const bizPresetOptions = [
+  { key: 'today', label: '今天' },
+  { key: 'yesterday', label: '昨天' },
+  { key: 'last7', label: '近7天' },
+  { key: 'last30', label: '近30天' }
+]
+
+const bizTimePreset = ref('today')
+const bizDateRange = ref([])
+
+const todayStr = () => toYMD(new Date())
+
+const applyBizPreset = (key) => {
+  bizTimePreset.value = key
+  const t = todayStr()
+  if (key === 'today') {
+    bizDateRange.value = [t, t]
+    return
+  }
+  if (key === 'yesterday') {
+    const y = addDays(t, -1)
+    bizDateRange.value = [y, y]
+    return
+  }
+  if (key === 'last7') {
+    bizDateRange.value = [addDays(t, -6), t]
+    return
+  }
+  if (key === 'last30') {
+    bizDateRange.value = [addDays(t, -29), t]
+  }
+}
+
+const detectPresetFromRange = (range) => {
+  if (!range || range.length !== 2) return 'custom'
+  const [start, end] = range
+  const t = todayStr()
+  if (start === end) {
+    if (start === t) return 'today'
+    if (start === addDays(t, -1)) return 'yesterday'
+    return 'custom'
+  }
+  if (end === t && start === addDays(t, -6)) return 'last7'
+  if (end === t && start === addDays(t, -29)) return 'last30'
+  return 'custom'
+}
+
+const onBizDateRangeChange = (val) => {
+  if (!val || val.length !== 2) return
+  bizTimePreset.value = detectPresetFromRange(val)
+}
+
+const bizRangeDayCount = computed(() => {
+  const r = bizDateRange.value
+  if (!r || r.length !== 2) return 1
+  return daysInclusiveRange(r[0], r[1])
+})
+
+/** 单日且为今天 / 昨天（用于单位文案与昨日示例数据区分） */
+const isBizRangeTodayOnly = computed(() => {
+  const r = bizDateRange.value
+  if (!r || r.length !== 2) return false
+  const [s, e] = r
+  const t = todayStr()
+  return s === e && s === t
+})
+
+const isBizRangeYesterdayOnly = computed(() => {
+  const r = bizDateRange.value
+  if (!r || r.length !== 2) return false
+  const [s, e] = r
+  const y = addDays(todayStr(), -1)
+  return s === e && s === y
+})
+
+const businessFixedBases = [
+  { label: '证书数量', value: 156, unit: '张' },
+  { label: '应用实体数量', value: 12, unit: '个' },
+  { label: '并发连接数', value: 42, unit: '路' }
+]
+
+const businessStatsFixed = computed(() =>
+  businessFixedBases.map((row) => ({
+    label: row.label,
+    value: formatInt(row.value),
+    unit: row.unit
+  }))
+)
+
+/**
+ * 按日基准（示意），乘以所选区间天数。
+ * 「昨天」与「今天」同为 1 天时，用 yesterdayScale 区分示例量，避免切换无变化。
+ */
+const businessTimedBases = [
+  {
+    label: '签名业务',
+    successPerDay: 44880,
+    failPerDay: 350,
+    yesterdayScale: 0.91,
+    detail: {
+      p1SignSuccess: 28200,
+      p1SignFail: 180,
+      p1VerifySuccess: 27900,
+      p1VerifyFail: 120,
+      p7SignSuccess: 16680,
+      p7SignFail: 170,
+      p7VerifySuccess: 16720,
+      p7VerifyFail: 150
+    }
+  },
+  {
+    label: '验签业务',
+    successPerDay: 44620,
+    failPerDay: 270,
+    yesterdayScale: 0.935,
+    detail: {
+      p1SignSuccess: 28100,
+      p1SignFail: 130,
+      p1VerifySuccess: 27700,
+      p1VerifyFail: 90,
+      p7SignSuccess: 16520,
+      p7SignFail: 140,
+      p7VerifySuccess: 16920,
+      p7VerifyFail: 180
+    }
+  },
+  {
+    label: '制作信封',
+    successPerDay: 1168,
+    failPerDay: 32,
+    yesterdayScale: 0.88
+  },
+  {
+    label: '解信封',
+    successPerDay: 1152,
+    failPerDay: 28,
+    yesterdayScale: 0.9
+  }
+]
+
+const bizTimedUnitLabel = computed(() => {
+  const days = bizRangeDayCount.value
+  if (days !== 1) return `次（${days}天合计）`
+  if (isBizRangeTodayOnly.value) return '次（今日）'
+  if (isBizRangeYesterdayOnly.value) return '次（昨日）'
+  return '次（所选日）'
+})
+
+const businessStatsTimed = computed(() => {
+  const days = bizRangeDayCount.value
+  const yOnly = isBizRangeYesterdayOnly.value
+  const unit = bizTimedUnitLabel.value
+  return businessTimedBases.map((row) => {
+    const scale = days === 1 && yOnly ? row.yesterdayScale : 1
+    const d = row.detail
+    const detailLinesP1 =
+      row.label === '签名业务' && d
+        ? [
+            `P1 签名成功数量：${formatInt(d.p1SignSuccess * days * scale)}`,
+            `P1 签名失败数量：${formatInt(d.p1SignFail * days * scale)}`
+          ]
+        : row.label === '验签业务' && d
+          ? [
+              `P1 验签成功数量：${formatInt(d.p1VerifySuccess * days * scale)}`,
+              `P1 验签失败数量：${formatInt(d.p1VerifyFail * days * scale)}`
+            ]
+          : []
+    const detailLinesP7 =
+      row.label === '签名业务' && d
+        ? [
+            `P7 签名成功数量：${formatInt(d.p7SignSuccess * days * scale)}`,
+            `P7 签名失败数量：${formatInt(d.p7SignFail * days * scale)}`
+          ]
+        : row.label === '验签业务' && d
+          ? [
+              `P7 验签成功数量：${formatInt(d.p7VerifySuccess * days * scale)}`,
+              `P7 验签失败数量：${formatInt(d.p7VerifyFail * days * scale)}`
+            ]
+          : []
+    const showDetailTooltip = detailLinesP1.length > 0 || detailLinesP7.length > 0
+    return {
+      label: row.label,
+      successValue: formatInt(row.successPerDay * days * scale),
+      failValue: formatInt(row.failPerDay * days * scale),
+      totalValue: formatInt((row.successPerDay + row.failPerDay) * days * scale),
+      detailLinesP1,
+      detailLinesP7,
+      showDetailTooltip,
+      unit
+    }
+  })
+})
 
 /** 暂不需要告警模块时设为 false，需要展示时改为 true */
 const showAlarmSection = ref(false)
@@ -196,8 +463,6 @@ const alarmCount = ref(2)
 let cpuInstance = null
 let memoryInstance = null
 let diskInstance = null
-
-const totalServiceConnections = 42
 
 const deviceBasic = ref({
   health: '正常',
@@ -214,23 +479,6 @@ const networkPorts = ref({
 const nicTrafficList = ref([
   { name: 'lo', ip: '127.0.0.1', upRate: '312.53', downRate: '312.53' },
   { name: 'eth0', ip: '192.168.137.173', upRate: '373.85', downRate: '32.40' }
-])
-
-const businessStats = ref([
-  { label: '证书数量', value: '156', unit: '张' },
-  { label: '用户数量', value: '89', unit: '人' },
-  { label: '应用实体数量', value: '12', unit: '个' },
-  { label: '并发连接数', value: String(totalServiceConnections), unit: '路' },
-  { label: '签名业务', value: '45,230', unit: '次（今日）' },
-  { label: '验签业务', value: '44,890', unit: '次（今日）' },
-  { label: '制作信封', value: '1,200', unit: '次（今日）' },
-  { label: '解信封', value: '1,180', unit: '次（今日）' }
-])
-
-const serviceList = ref([
-  { name: '签名服务', port: '8080', status: '运行中', connections: 25, totalRequests: 125680, successRate: 99.8, avgResponseTime: '15ms', uptime: '15天 8小时' },
-  { name: '加密服务', port: '8081', status: '运行中', connections: 12, totalRequests: 89520, successRate: 99.9, avgResponseTime: '12ms', uptime: '15天 8小时' },
-  { name: '证书服务', port: '8082', status: '运行中', connections: 5, totalRequests: 32100, successRate: 100, avgResponseTime: '8ms', uptime: '15天 8小时' }
 ])
 
 const alarmList = ref([
@@ -320,6 +568,7 @@ const handleResize = () => {
 }
 
 onMounted(() => {
+  applyBizPreset('today')
   initCharts()
   window.addEventListener('resize', handleResize)
 })
@@ -359,35 +608,151 @@ onUnmounted(() => {
   border-left: 3px solid $primary-color;
 }
 
-.biz-stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+.biz-stats-module {
+  display: flex;
+  flex-direction: column;
   gap: 12px;
 }
 
-.biz-stat-item {
-  padding: 14px 12px;
-  background: #f5f7fa;
+.biz-time-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+  padding: 12px 14px;
+  background: $card-bg;
+  border: 1px solid $border-light;
   border-radius: 4px;
-  text-align: center;
+  box-shadow: $box-shadow;
+
+  &--embedded {
+    margin-top: -4px;
+    margin-bottom: $spacing-md;
+    padding: 0 0 $spacing-md;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    border-bottom: 1px solid $border-light;
+  }
 }
 
-.biz-stat-label {
-  font-size: 12px;
-  color: #999;
-  margin-bottom: 8px;
-}
-
-.biz-stat-value {
-  font-size: 22px;
+.biz-time-toolbar-label {
+  font-size: $font-size-sm;
   font-weight: 600;
-  color: $text-primary;
+  color: $text-secondary;
+  margin-right: 4px;
 }
 
-.biz-stat-unit {
-  font-size: 11px;
-  color: $text-muted;
+.biz-preset-group {
+  flex-shrink: 0;
+}
+
+.biz-date-range {
+  width: 220px;
+  max-width: 100%;
+}
+
+.biz-date-range :deep(.el-range-editor.el-input__wrapper) {
+  width: 100%;
+}
+
+.biz-fixed-card,
+.biz-timed-card {
+  margin-bottom: 0;
+}
+
+.biz-stat-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
   margin-top: 4px;
+  padding: 4px 0 8px;
+}
+
+.biz-stat-strip__cell {
+  flex: 1 1 0;
+  min-width: 140px;
+  text-align: center;
+  padding: 12px 10px;
+  box-sizing: border-box;
+
+  &:not(:last-child) {
+    border-right: 1px solid $border-light;
+  }
+}
+
+.biz-stat-strip__label {
+  font-size: 17px;
+  color: $text-primary;
+  line-height: 1.4;
+}
+
+.biz-stat-strip__label-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.biz-stat-strip__info-icon {
+  color: #8c8c8c;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.biz-stat-strip__value{
+  font-size: 18px;
+  color:rgb(0, 125, 243);
+  margin-top: 4px;
+  line-height: 1.3;
+} 
+
+.biz-stat-strip__unit {
+  font-size: 14px;
+  color: $text-primary;
+  margin-top: 6px;
+  line-height: 1.3;
+}
+
+.biz-stat-split {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: stretch;
+  width: fit-content;
+  margin: 0 auto;
+}
+
+.biz-stat-split__line {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: left;
+  min-width: 170px;
+
+  &--success {
+    color: $success-color;
+  }
+
+  &--danger {
+    color: $danger-color;
+  }
+
+  &--total {
+    color:rgb(0, 125, 243);
+  }
+}
+
+.biz-detail-tooltip__line {
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.biz-detail-tooltip-grid {
+  display: grid;
+  grid-template-columns: max-content max-content;
+  gap: 0 18px;
 }
 
 .card-grid {
@@ -532,10 +897,6 @@ onUnmounted(() => {
   font-weight: 500;
 }
 
-.service-status {
-  margin-top: $spacing-md;
-}
-
 .alarm-section {
   margin-top: $spacing-md;
 
@@ -545,3 +906,4 @@ onUnmounted(() => {
   }
 }
 </style>
+
