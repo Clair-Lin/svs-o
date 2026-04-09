@@ -91,7 +91,7 @@
     >
       <el-form ref="formRef" :model="keyForm" :rules="keyRules" label-width="120px">
         <el-form-item label="密钥容器名" prop="pucContainerName">
-          <el-input v-model="keyForm.pucContainerName" placeholder="pucContainerName[in]" clearable />
+          <el-input v-model="keyForm.pucContainerName" placeholder="" clearable />
         </el-form-item>
         <el-form-item label="密钥类型" prop="keyType">
           <el-select
@@ -128,7 +128,7 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="导出" prop="uiExportFlag">
+        <el-form-item label="是否可导出" prop="uiExportFlag">
           <el-radio-group v-model="keyForm.uiExportFlag">
             <el-radio
               v-for="opt in EXPORT_FLAG_OPTIONS"
@@ -247,7 +247,7 @@ const keyRules = {
   keyLength: [{ required: true, message: '请选择密钥长度', trigger: 'change' }],
   pucContainerName: [{ required: true, message: '请输入密钥容器名', trigger: 'blur' }],
   keyUsage: [{ required: true, message: '请选择密钥用途', trigger: 'change' }],
-  uiExportFlag: [{ required: true, message: '请选择是否导出', trigger: 'change' }],
+  uiExportFlag: [{ required: true, message: '请选择是否可导出', trigger: 'change' }],
   password: [
     { required: true, message: '请输入密钥访问口令', trigger: 'blur' },
     { min: 6, max: 32, message: '长度在 6 到 32 个字符', trigger: 'blur' }
@@ -260,7 +260,7 @@ const keyList = ref([
     keyId: '1763124279630301',
     algorithmSpec: 'RSA_2048',
     usageLabel: '签名',
-    exportableLabel: '可导出',
+    exportableLabel: '是',
     uiExportFlag: 1,
     addedTime: '2025-11-14 20:44:39',
     addedTimeMs: 1763124279000
@@ -270,7 +270,7 @@ const keyList = ref([
     keyId: '1763124100123456',
     algorithmSpec: 'SM2_256',
     usageLabel: '密钥交换协议',
-    exportableLabel: '不可导出',
+    exportableLabel: '否',
     uiExportFlag: 0,
     addedTime: '2025-11-14 18:22:10',
     addedTimeMs: 1763118130000

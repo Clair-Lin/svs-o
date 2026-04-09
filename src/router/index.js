@@ -115,15 +115,6 @@ const routes = [
     }
   },
   {
-    path: '/system/service',
-    name: 'ServiceManage',
-    component: () => import('@/views/system/ServiceManage.vue'),
-    meta: {
-      title: '服务管理',
-      breadcrumb: [{ label: '系统管理' }, { label: '服务管理' }]
-    }
-  },
-  {
     path: '/system/pool',
     name: 'PoolConfig',
     component: () => import('@/views/system/PoolConfig.vue'),

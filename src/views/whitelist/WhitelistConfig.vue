@@ -68,7 +68,7 @@
           <el-input
             v-model="addForm.rawText"
             type="textarea"
-            :rows="6"
+            :rows="2"
             placeholder="请输入IP白名单，多个IP用英文 ',' 逗号分隔"
           />
           <p class="field-hint">

@@ -26,10 +26,10 @@
       </el-menu-item>
 
       <!-- 应用管理 -->
-      <el-menu-item index="/application">
+      <!-- <el-menu-item index="/application">
         <el-icon><Grid /></el-icon>
         <template #title>应用管理</template>
-      </el-menu-item>
+      </el-menu-item> -->
 
       <!-- 签名验签服务 -->
       <el-sub-menu index="sign-service">
@@ -40,8 +40,8 @@
         <el-menu-item index="/key/manage">
           <template #title>密钥管理</template>
         </el-menu-item>
-        <el-menu-item index="/cert/manage">证书管理</el-menu-item>
-        <el-menu-item index="/cert/user">用户证书管理</el-menu-item>
+        <!-- <el-menu-item index="/cert/manage">证书管理</el-menu-item>
+        <el-menu-item index="/cert/user">用户证书管理</el-menu-item> -->
         <el-menu-item index="/cert/ca">CA根证管理</el-menu-item>
       </el-sub-menu>
 
@@ -51,13 +51,12 @@
           <el-icon><Tools /></el-icon>
           <span>系统管理</span>
         </template>
-        <el-menu-item index="/system/info">系统信息</el-menu-item>
+        <!-- <el-menu-item index="/system/info">系统信息</el-menu-item>
         <el-menu-item index="/system/network">网络配置</el-menu-item>
-        <el-menu-item index="/system/service">服务管理</el-menu-item>
         <el-menu-item index="/system/pool">连接池配置</el-menu-item>
         <el-menu-item index="/system/admin">管理员管理</el-menu-item>
         <el-menu-item index="/system/permission">权限管理</el-menu-item>
-        <el-menu-item index="/system/ntp">NTP时间源管理</el-menu-item>
+        <el-menu-item index="/system/ntp">NTP时间源管理</el-menu-item> -->
         <el-menu-item index="/system/whitelist">白名单配置</el-menu-item>
         <el-menu-item index="/system/detect">一键检测</el-menu-item>
       </el-sub-menu>

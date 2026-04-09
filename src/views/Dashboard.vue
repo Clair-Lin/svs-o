@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="dashboard">
     <!-- <div class="page-card monitor-intro">
       <div class="card-title">监控总览</div>
@@ -8,8 +8,8 @@
     </div> -->
 
     <h3 class="section-heading">系统状态与资源</h3>
-    <!-- 第一行：设备基本信息 + CPU使用率 -->
-    <div class="card-grid">
+    <!-- 第一行：设备基本信息 | 网络状态 -->
+    <div class="card-grid card-grid--device-row">
       <div class="page-card device-basic-card">
         <div class="card-title">设备基本信息</div>
         <div class="device-basic-body">
@@ -25,57 +25,59 @@
             <span class="field-label">CPU核数</span>
             <span class="field-value">{{ deviceBasic.cpuCores }}</span>
           </div>
-
-          <div class="network-embedded">
-            <div class="network-embedded-title">网络状态</div>
-            <div class="port-status-line">
-              <span class="port-item">
-                <span class="field-label">管理端口</span>
-                <span class="port-num">{{ networkPorts.management.port }}</span>
-                <span class="status-tag success">{{ networkPorts.management.status }}</span>
-              </span>
-              <span class="port-item">
-                <span class="field-label">服务端口</span>
-                <span class="port-num">{{ networkPorts.service.port }}</span>
-                <span class="status-tag success">{{ networkPorts.service.status }}</span>
-              </span>
-            </div>
-            <div class="nic-list-caption">网口列表</div>
-            <el-table
-              :data="nicTrafficList"
-              size="small"
-              border
-              class="nic-table"
-              :header-cell-style="{ background: '#fafafa', color: '#333' }"
-            >
-              <el-table-column prop="name" label="网口" width="100" />
-              <el-table-column prop="ip" label="IP" width="160" />
-              <el-table-column label="流量" min-width="220">
-                <template #default="{ row }">
-                  <div class="traffic-cell">
-                    <div>上行：{{ row.upRate }} Mb/s</div>
-                    <div>下行：{{ row.downRate }} Mb/s</div>
-                  </div>
-                </template>
-              </el-table-column>
-            </el-table>
-          </div>
         </div>
       </div>
 
-      <div class="page-card">
-        <div class="card-title">CPU使用率</div>
-        <div class="chart-container chart-container--cpu">
-          <div ref="cpuChart" class="donut-chart"></div>
+      <div class="page-card network-status-card">
+        <div class="card-title">网络状态</div>
+        <div class="network-status-body">
+          <div class="port-status-line">
+            <span class="port-item">
+              <span class="field-label">管理端口</span>
+              <span class="port-num">{{ networkPorts.management.port }}</span>
+              <span class="status-tag success">{{ networkPorts.management.status }}</span>
+            </span>
+            <span class="port-item">
+              <span class="field-label">服务端口</span>
+              <span class="port-num">{{ networkPorts.service.port }}</span>
+              <span class="status-tag success">{{ networkPorts.service.status }}</span>
+            </span>
+          </div>
+          <div class="nic-list-caption">网口列表</div>
+          <el-table
+            :data="nicTrafficList"
+            size="small"
+            border
+            class="nic-table"
+            :header-cell-style="{ background: '#fafafa', color: '#333' }"
+          >
+            <el-table-column prop="name" label="网口" width="100" />
+            <el-table-column prop="ip" label="IP" width="160" />
+            <el-table-column label="流量" min-width="220">
+              <template #default="{ row }">
+                <div class="traffic-cell">
+                  <div>上行：{{ row.upRate }} Mb/s</div>
+                  <div>下行：{{ row.downRate }} Mb/s</div>
+                </div>
+              </template>
+            </el-table-column>
+          </el-table>
         </div>
       </div>
     </div>
 
-    <!-- 第二行：内存使用率 + 硬盘使用率（环形图 + 右侧容量说明） -->
-    <div class="card-grid">
-      <div class="page-card">
+    <!-- 第二行：CPU / 内存 / 硬盘使用率 -->
+    <div class="card-grid card-grid--usage-row">
+      <div class="page-card usage-rate-card">
+        <div class="card-title">CPU使用率</div>
+        <div class="chart-container chart-container--cpu chart-container--usage-row">
+          <div ref="cpuChart" class="donut-chart"></div>
+        </div>
+      </div>
+
+      <div class="page-card usage-rate-card">
         <div class="card-title">内存使用率</div>
-        <div class="usage-donut-layout">
+        <div class="usage-donut-layout usage-donut-layout--compact">
           <div ref="memoryChart" class="donut-chart donut-chart--with-side"></div>
           <div class="usage-detail">
             <div class="usage-detail-line">
@@ -90,9 +92,9 @@
         </div>
       </div>
 
-      <div class="page-card">
+      <div class="page-card usage-rate-card">
         <div class="card-title">硬盘使用率</div>
-        <div class="usage-donut-layout">
+        <div class="usage-donut-layout usage-donut-layout--compact">
           <div ref="diskChart" class="donut-chart donut-chart--with-side"></div>
           <div class="usage-detail">
             <div class="usage-detail-line">
@@ -762,6 +764,15 @@ onUnmounted(() => {
   margin-bottom: $spacing-md;
 }
 
+.card-grid--device-row {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  align-items: stretch;
+}
+
+.card-grid--usage-row {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .device-basic-card {
   .device-basic-body {
     padding-top: 4px;
@@ -787,25 +798,23 @@ onUnmounted(() => {
     color: $text-secondary;
     word-break: break-all;
   }
+}
 
-  .network-embedded {
-    margin-top: 20px;
-    padding-top: 18px;
-    border-top: 1px solid $border-light;
+.network-status-card {
+  .network-status-body {
+    padding-top: 4px;
   }
 
-  .network-embedded-title {
+  .field-label {
     font-weight: 600;
-    font-size: $font-size-base;
     color: $text-primary;
-    margin-bottom: 14px;
   }
 
   .port-status-line {
     display: flex;
     flex-wrap: wrap;
-    gap: 28px 36px;
-    margin-bottom: 16px;
+    gap: 20px 28px;
+    margin-bottom: 14px;
     align-items: center;
   }
 
@@ -846,11 +855,20 @@ onUnmounted(() => {
   }
 }
 
+.usage-rate-card {
+  min-width: 0;
+}
+
 .chart-container--cpu {
   height: 220px;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.chart-container--usage-row {
+  height: 200px;
+  min-height: 180px;
 }
 
 .donut-chart {
@@ -866,11 +884,33 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
+.card-grid--usage-row .donut-chart--with-side {
+  width: 150px;
+  min-width: 140px;
+  height: 150px;
+  max-width: 100%;
+}
+
 .usage-donut-layout {
   display: flex;
   align-items: center;
   min-height: 200px;
   padding: 8px 0 4px;
+}
+
+.usage-donut-layout--compact {
+  min-height: 180px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 4px;
+  padding: 6px 4px 4px;
+}
+
+.usage-donut-layout--compact .usage-detail {
+  flex: 1 1 120px;
+  min-width: 0;
+  padding-left: 4px;
+  gap: 10px;
 }
 
 .usage-detail {

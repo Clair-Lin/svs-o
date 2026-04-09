@@ -83,7 +83,6 @@ const permissionTree = ref([
     children: [
       { id: 31, name: '系统信息' },
       { id: 32, name: '网络配置' },
-      { id: 33, name: '服务管理' },
       { id: 34, name: '管理员管理' }
     ]
   }
@@ -93,7 +92,7 @@ const handleRoleChange = (row) => {
   currentRole.value = row
   // 根据角色加载权限
   if (row?.id === 1) {
-    checkedPermissions.value = [11, 21, 22, 23, 24, 31, 32, 33, 34]
+    checkedPermissions.value = [11, 21, 22, 23, 24, 31, 32, 34]
   } else if (row?.id === 2) {
     checkedPermissions.value = [11, 21, 22]
   } else {

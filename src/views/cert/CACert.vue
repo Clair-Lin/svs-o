@@ -12,6 +12,15 @@
               class="filter-input"
             />
           </div>
+          <div class="filter-item">
+            <span class="filter-label">DN</span>
+            <el-input
+              v-model="filterDn"
+              placeholder="DN模糊查询：忽略空格，可用空格或逗号分隔多关键字"
+              clearable
+              class="filter-input filter-input--dn"
+            />
+          </div>
           <div class="filter-item filter-item--range">
             <span class="filter-label">有效期</span>
             <el-date-picker
@@ -35,19 +44,40 @@
         <el-button type="primary" @click="openAdd">添加</el-button>
       </div>
 
-      <el-table :data="filteredList" border stripe>
-        <el-table-column prop="caName" label="CA名称" min-width="160" show-overflow-tooltip />
+      <el-table :data="pagedList" border stripe>
+        <el-table-column prop="caName" label="CA名称" min-width="140" show-overflow-tooltip />
         <el-table-column prop="description" label="CA描述" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="certLabel" label="CA证书" min-width="200" show-overflow-tooltip />
+        <el-table-column label="CA证书" min-width="280" show-overflow-tooltip>
+          <template #default="{ row }">
+            <el-button type="primary" link class="dn-link" @click="openDetail(row)">
+              {{ row.certLabel }}
+            </el-button>
+          </template>
+        </el-table-column>
         <el-table-column prop="notBefore" label="生效时间" width="120" align="center" />
         <el-table-column prop="notAfter" label="过期时间" width="120" align="center" />
-        <el-table-column label="操作" fixed="right" width="140">
+        <el-table-column label="操作" fixed="right" width="300">
           <template #default="{ row }">
-            <el-button type="primary" size="small" link @click="openDetail(row)">查看</el-button>
+            <el-button type="primary" size="small" link @click="stubAction(row, '上传下级证书')">
+              上传下级证书
+            </el-button>
+            <el-button type="primary" size="small" link @click="stubAction(row, '配置CRL')">配置CRL</el-button>
+            <el-button type="primary" size="small" link @click="stubAction(row, '配置OCSP')">配置OCSP</el-button>
             <el-button type="danger" size="small" link @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
+
+      <div class="table-pagination">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, prev, pager, next, sizes"
+          :total="filteredList.length"
+          background
+        />
+      </div>
     </div>
 
     <el-dialog v-model="addVisible" title="添加" width="520px" destroy-on-close @closed="resetAddForm">
@@ -118,17 +148,56 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
-let idSeq = 1
+let idSeq = 5
 
 const filterCaName = ref('')
 const queryCaName = ref('')
+const filterDn = ref('')
+const queryDn = ref('')
 const filterValidityRange = ref(null)
 const queryValidityRange = ref(null)
 
-const list = ref([])
+const currentPage = ref(1)
+const pageSize = ref(10)
+
+/** 与示意图一致的示例数据（缺省字段已补全） */
+const list = ref([
+  {
+    id: '1',
+    caName: 'CA_TEST',
+    description: 'CA_TEST',
+    certLabel: 'C=CN,ST=GuangDong,O=Olym Tech Ltd,CN=Root CA',
+    notBefore: '2023-06-01',
+    notAfter: '2033-05-31'
+  },
+  {
+    id: '2',
+    caName: 'SM2-CA',
+    description: 'SM2',
+    certLabel: 'C=CN,O=GMSSL,OU=PKI/SM2,CN=RootCA for Test',
+    notBefore: '2022-01-15',
+    notAfter: '2032-01-14'
+  },
+  {
+    id: '3',
+    caName: 'RSA-CA',
+    description: 'RSA',
+    certLabel: 'C=CN,O=GMSSL,OU=PKI/RSA,CN=RootCA for Test',
+    notBefore: '2022-01-15',
+    notAfter: '2032-01-14'
+  },
+  {
+    id: '4',
+    caName: 'ML-DSA_CA',
+    description: '抗量子密码算法签发的CA根证',
+    certLabel: 'C=CN,CN=root_ca_20260205165008',
+    notBefore: '2026-02-05',
+    notAfter: '2036-02-04'
+  }
+])
 
 function parseYmd (s) {
   if (!s) return null
@@ -136,7 +205,29 @@ function parseYmd (s) {
   return Number.isNaN(t) ? null : t
 }
 
-/** 证书有效期 [notBefore, notAfter] 与查询区间有交集则保留 */
+/** 小写并去掉所有空白，便于 DN 与子串模糊比对 */
+function compactDnForSearch (s) {
+  return String(s || '').toLowerCase().replace(/\s/g, '')
+}
+
+/**
+ * DN 模糊查询：不区分大小写；忽略证书 DN 与关键字中的空格/换行；
+ * 支持用空格、中英文逗号、顿号分隔多个关键字（需全部在 DN 中出现，顺序不限）。
+ */
+function dnFuzzyMatch (certLabel, queryRaw) {
+  const raw = String(queryRaw || '').trim()
+  if (!raw) return true
+  const hay = compactDnForSearch(certLabel)
+  const tokens = raw
+    .toLowerCase()
+    .split(/[\s,，、]+/)
+    .map((t) => t.replace(/\s/g, ''))
+    .filter(Boolean)
+  if (!tokens.length) return true
+  return tokens.every((t) => hay.includes(t))
+}
+
+/** CA名称、DN（模糊匹配 CA证书 DN 串）、证书有效期与查询条件 */
 const filteredList = computed(() => {
   const q = queryCaName.value.trim().toLowerCase()
   const range = queryValidityRange.value
@@ -146,6 +237,7 @@ const filteredList = computed(() => {
 
   return list.value.filter((row) => {
     if (q && !row.caName.toLowerCase().includes(q)) return false
+    if (!dnFuzzyMatch(row.certLabel, queryDn.value)) return false
     if (startT != null && endT != null) {
       const nb = parseYmd(row.notBefore)
       const na = parseYmd(row.notAfter)
@@ -154,6 +246,21 @@ const filteredList = computed(() => {
     }
     return true
   })
+})
+
+const pagedList = computed(() => {
+  const all = filteredList.value
+  const size = pageSize.value
+  const page = currentPage.value
+  const start = (page - 1) * size
+  return all.slice(start, start + size)
+})
+
+watch([filteredList, pageSize], () => {
+  const n = filteredList.value.length
+  const size = pageSize.value || 10
+  const maxPage = Math.max(1, Math.ceil(n / size) || 1)
+  if (currentPage.value > maxPage) currentPage.value = maxPage
 })
 
 const addVisible = ref(false)
@@ -205,16 +312,25 @@ function resetAddForm () {
 
 const handleSearch = () => {
   queryCaName.value = filterCaName.value
+  queryDn.value = filterDn.value
   queryValidityRange.value = filterValidityRange.value
     ? [...filterValidityRange.value]
     : null
+  currentPage.value = 1
 }
 
 const handleReset = () => {
   filterCaName.value = ''
   queryCaName.value = ''
+  filterDn.value = ''
+  queryDn.value = ''
   filterValidityRange.value = null
   queryValidityRange.value = null
+  currentPage.value = 1
+}
+
+const stubAction = (row, title) => {
+  ElMessage.info(`${title}（原型演示）：${row.caName}`)
 }
 
 const openAdd = () => {
@@ -296,6 +412,11 @@ const handleDelete = (row) => {
 
 .filter-input {
   width: 280px;
+
+  &--dn {
+    width: 360px;
+    max-width: 100%;
+  }
 }
 
 .filter-item--range {
@@ -326,5 +447,21 @@ const handleDelete = (row) => {
   margin-top: 8px;
   font-size: 12px;
   color: $text-secondary;
+}
+
+.table-pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+  padding: 4px 0;
+}
+
+.dn-link {
+  padding: 0;
+  height: auto;
+  font-weight: 400;
+  text-align: left;
+  white-space: normal;
+  line-height: 1.5;
 }
 </style>

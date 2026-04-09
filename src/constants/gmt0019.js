@@ -22,10 +22,10 @@ export const KEY_USAGE_OPTIONS_RSA_0019 = [
   { value: 'rsa_kex', label: '密钥交换（加密）' }
 ]
 
-/** uiExportFlag[in] */
+/** uiExportFlag[in]：界面展示为「否 / 是」 */
 export const EXPORT_FLAG_OPTIONS = [
-  { value: 0, label: '不可导出' },
-  { value: 1, label: '可导出' }
+  { value: 0, label: '否' },
+  { value: 1, label: '是' }
 ]
 
 /** 各密钥类型允许的密钥长度（比特），对应 uiKeyBits 示意 */

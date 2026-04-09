@@ -2,6 +2,14 @@
   <div class="detect">
     <div class="page-card detect-card">
       <div class="card-title">一键检测</div>
+      <el-alert
+        type="warning"
+        :closable="false"
+        show-icon
+        class="detect-prereq-alert"
+      >
+        检测前需上传 <strong>CA 根证</strong>和<strong>用户证书</strong>。若检测因证书缺失或无效导致接口异常，请按页面提示重新上传后再检。
+      </el-alert>
       <div class="config-panel">
         <div class="config-panel__left">
           <span class="config-label">检测方式：</span>
@@ -56,6 +64,15 @@
         </div>
 
         <template v-if="summary">
+          <el-alert
+            v-if="certAbnormalSummaryHint"
+            type="error"
+            :closable="false"
+            show-icon
+            class="detect-cert-abnormal-alert"
+          >
+            {{ certAbnormalSummaryHint }}
+          </el-alert>
           <div class="detect-stat-strip detect-stat-strip--in-results">
             <div class="stat-cards stat-cards--inspect">
               <div class="stat-card stat-card--overall" :class="overallStatusClass">
@@ -189,6 +206,12 @@ import {
   ArrowDown
 } from '@element-plus/icons-vue'
 
+/**
+ * 原型：为 true 时模拟「未上传/无效证书」导致证书相关接口异常，并展示「未检测到证书，请重新上传」等提示。
+ * 为 false（默认）时服务接口检测均为「正常」演示数据。
+ */
+const DEMO_SIMULATE_CERT_MISSING = false
+
 /** 检测方式：全部 / 服务接口 / 加密卡 */
 const detectType = ref('all')
 
@@ -242,6 +265,42 @@ const idleHintText = computed(() => {
     card: '请点击「开始检查」仅执行加密卡检测。'
   }
   return map[detectType.value] || map.all
+})
+
+/** 是否与 CA/用户证书强相关的接口（用于异常时给出统一上传提示） */
+function isCertRelatedServiceRow (row) {
+  const n = String(row.name || '')
+  const u = String(row.url || '').toLowerCase()
+  if (n.includes('证书')) return true
+  if (u.includes('/cert/') || u.includes('certificate')) return true
+  if (n.includes('签名') || n.includes('验签')) return true
+  return false
+}
+
+const CERT_REUPLOAD_HINT = '未检测到证书，请重新上传。'
+
+/** 根据演示开关生成服务接口检测结果 */
+function buildServiceResultsForRun () {
+  const base = SERVICE_INTERFACE_ROWS.map((r) => ({ ...r }))
+  if (!DEMO_SIMULATE_CERT_MISSING) return base
+  return base.map((row) => {
+    if (!isCertRelatedServiceRow(row)) return row
+    return {
+      ...row,
+      status: '异常',
+      responseTime: '—',
+      detail: '未检测到有效证书或证书链校验失败（原型模拟）',
+      certAbnormalUserHint: CERT_REUPLOAD_HINT
+    }
+  })
+}
+
+/** 有证书类接口异常时，在结果区顶部展示汇总提示 */
+const certAbnormalSummaryHint = computed(() => {
+  if (!summary.value || summary.value.failed === 0) return ''
+  const bad = serviceResults.value.filter((r) => r.status !== '正常' && isCertRelatedServiceRow(r))
+  if (!bad.length) return ''
+  return CERT_REUPLOAD_HINT
 })
 
 /** 云签名服务接口基址（与检测结果展示一致，实际环境由部署决定） */
@@ -385,7 +444,8 @@ const resultCategories = computed(() => {
         tagType: r.status === '正常' ? 'success' : 'danger',
         metaLines: [
           `接口地址：${r.url}`,
-          `响应时间：${r.responseTime} · ${r.detail}`
+          `响应时间：${r.responseTime} · ${r.detail}`,
+          ...(r.status !== '正常' && r.certAbnormalUserHint ? [r.certAbnormalUserHint] : [])
         ]
       }))
     })
@@ -460,7 +520,7 @@ const runDetect = () => {
       const mode = detectType.value
 
       if (mode === 'all' || mode === 'service') {
-        serviceResults.value = SERVICE_INTERFACE_ROWS.map((r) => ({ ...r }))
+        serviceResults.value = buildServiceResultsForRun()
       } else {
         serviceResults.value = []
       }
@@ -528,6 +588,14 @@ const runDetect = () => {
 
 .detect-card {
   padding-bottom: 8px;
+}
+
+.detect-prereq-alert {
+  margin-bottom: 4px;
+}
+
+.detect-cert-abnormal-alert {
+  margin: 12px 0 10px;
 }
 
 .results-module__toolbar {
