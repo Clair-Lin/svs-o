@@ -69,6 +69,19 @@ const routes = [
       breadcrumb: [{ label: '签名验签服务' }, { label: 'CA根证管理' }]
     }
   },
+  {
+    path: '/cert/ca/chain/:id',
+    name: 'CACertChain',
+    component: () => import('@/views/cert/CACertChain.vue'),
+    meta: {
+      title: 'CA-证书链',
+      breadcrumb: [
+        { label: '签名验签服务' },
+        { label: 'CA根证管理', to: '/cert/ca' },
+        { label: 'CA-证书链' }
+      ]
+    }
+  },
   // 系统管理 - 白名单配置（应用访问 IP，单一界面）
   {
     path: '/system/whitelist',

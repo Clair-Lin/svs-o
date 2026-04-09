@@ -1,5 +1,13 @@
 # 操作日志
 
+## 2026-04-09（CA根证管理 · CA 证书链独立页与推送 GitHub）
+
+- **`src/views/cert/CACertChain.vue`**（新）：**返回**、标题「CA-证书链」、表格列（证书 SN、证书 DN、签发者 DN、证书生效/失效时间、算法类型）。从列表进入时通过 `history.state.caCertRow` 携带当前行；直接打开 URL 时用与列表一致的 `FALLBACK_CA_ROWS`。内置 id=1 与参考示意图一致的 SN/时间（DN 仍取自当前行）；id=2/3 为两层链演示，id=4 为 ML-DSA 单根；其余/新增行为单根自签样式并由 `certLabel`、有效期等推导。
+- **`src/views/cert/CACert.vue`**：点击 **CA证书** 链式按钮跳转 `CACertChain`（`router.push` + `state`），移除原「CA根证详情」弹窗。
+- **`src/router/index.js`**：新增 `/cert/ca/chain/:id`（`CACertChain`），顶栏面包屑为「签名验签服务 / CA根证管理 / CA-证书链」，其中「CA根证管理」可点回列表。
+- **`docs/界面功能说明.md`**：标题改为「SVS签名验签1.8.0 原型」；文档范围句略作精简。
+- **`src/views/Dashboard.vue`**：去除误加的 UTF-8 BOM（与 `main` 内容一致，不纳入本次功能 diff）。
+
 ## 2026-04-09（一键检测 · 证书前置说明与异常提示）
 
 - **`src/views/Detect.vue`**：在「检测方式」上方增加 **warning** 前置说明：检测前需上传 **CA 根证**、**用户证书**，并说明证书问题将提示重新上传。证书相关接口异常时，结果区顶部 **error** 提示「未检测到证书，请重新上传。」；明细行在异常项下追加同文案。新增 `isCertRelatedServiceRow`、`buildServiceResultsForRun`、`DEMO_SIMULATE_CERT_MISSING`（默认 `false` 全正常；置 `true` 时原型模拟证书缺失以预览提示）。

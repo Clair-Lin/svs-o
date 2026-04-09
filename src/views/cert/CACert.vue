@@ -47,7 +47,7 @@
       <el-table :data="pagedList" border stripe>
         <el-table-column prop="caName" label="CA名称" min-width="140" show-overflow-tooltip />
         <el-table-column prop="description" label="CA描述" min-width="200" show-overflow-tooltip />
-        <el-table-column label="CA证书" min-width="280" show-overflow-tooltip>
+        <el-table-column label="CA证书主题（DN）" min-width="280" show-overflow-tooltip>
           <template #default="{ row }">
             <el-button type="primary" link class="dn-link" @click="openDetail(row)">
               {{ row.certLabel }}
@@ -135,21 +135,15 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="detailVisible" title="CA根证详情" width="520px">
-      <el-descriptions v-if="currentRow" :column="1" border>
-        <el-descriptions-item label="CA名称">{{ currentRow.caName }}</el-descriptions-item>
-        <el-descriptions-item label="CA描述">{{ currentRow.description || '—' }}</el-descriptions-item>
-        <el-descriptions-item label="CA证书">{{ currentRow.certLabel }}</el-descriptions-item>
-        <el-descriptions-item label="生效时间">{{ currentRow.notBefore }}</el-descriptions-item>
-        <el-descriptions-item label="过期时间">{{ currentRow.notAfter }}</el-descriptions-item>
-      </el-descriptions>
-    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, computed, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+
+const router = useRouter()
 
 let idSeq = 5
 
@@ -264,8 +258,6 @@ watch([filteredList, pageSize], () => {
 })
 
 const addVisible = ref(false)
-const detailVisible = ref(false)
-const currentRow = ref(null)
 const addFormRef = ref(null)
 
 const addForm = reactive({
@@ -366,8 +358,11 @@ async function confirmAdd () {
 }
 
 const openDetail = (row) => {
-  currentRow.value = row
-  detailVisible.value = true
+  router.push({
+    name: 'CACertChain',
+    params: { id: row.id },
+    state: { caCertRow: { ...row } }
+  })
 }
 
 const handleDelete = (row) => {
