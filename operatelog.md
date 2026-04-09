@@ -1,5 +1,9 @@
 # 操作日志
 
+## 2026-04-09（CA根证管理 · 列表列名）
+
+- **`src/views/cert/CACert.vue`**：列表列标题由「CA证书主题（DN）」改为 **「CA证书（DN）」**。
+
 ## 2026-04-09（CA根证管理 · CA 证书链独立页与推送 GitHub）
 
 - **`src/views/cert/CACertChain.vue`**（新）：**返回**、标题「CA-证书链」、表格列（证书 SN、证书 DN、签发者 DN、证书生效/失效时间、算法类型）。从列表进入时通过 `history.state.caCertRow` 携带当前行；直接打开 URL 时用与列表一致的 `FALLBACK_CA_ROWS`。内置 id=1 与参考示意图一致的 SN/时间（DN 仍取自当前行）；id=2/3 为两层链演示，id=4 为 ML-DSA 单根；其余/新增行为单根自签样式并由 `certLabel`、有效期等推导。

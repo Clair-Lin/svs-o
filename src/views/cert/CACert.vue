@@ -47,7 +47,7 @@
       <el-table :data="pagedList" border stripe>
         <el-table-column prop="caName" label="CA名称" min-width="140" show-overflow-tooltip />
         <el-table-column prop="description" label="CA描述" min-width="200" show-overflow-tooltip />
-        <el-table-column label="CA证书主题（DN）" min-width="280" show-overflow-tooltip>
+        <el-table-column label="CA证书（DN）" min-width="280" show-overflow-tooltip>
           <template #default="{ row }">
             <el-button type="primary" link class="dn-link" @click="openDetail(row)">
               {{ row.certLabel }}
