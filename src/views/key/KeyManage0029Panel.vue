@@ -164,8 +164,9 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ref, reactive, computed, inject } from 'vue'
+import { ElMessage } from 'element-plus'
+import { KEY_MANAGE_SECURITY_KEY } from './keyManageSecurityKey.js'
 
 const filterKeyId = ref('')
 const filterAlgorithm = ref('')
@@ -178,6 +179,7 @@ const detailDialogVisible = ref(false)
 const creating = ref(false)
 const currentKey = ref(null)
 const formRef = ref(null)
+const securityModalsRef = inject(KEY_MANAGE_SECURITY_KEY) ?? ref(null)
 
 const keyForm = reactive({
   algorithm: 'SM2',
@@ -201,7 +203,7 @@ const KEY_SIZES_BY_ALGORITHM = {
   SM2: [256],
   RSA: [2048],
   SM4: [128],
-  '3DES': [112],
+  '3DES': [168],
   AES: [128]
 }
 
@@ -315,27 +317,15 @@ const handleDetail = (row) => {
 }
 
 const handleBackup = (row) => {
-  ElMessage.success(`已触发密钥 ${row.keyId} 备份（原型演示）`)
+  securityModalsRef.value?.openUkeyBackup?.(row)
 }
 
 const handleDestroy = (row) => {
-  ElMessageBox.confirm(
-    `确定销毁密钥「${row.keyId}」吗？销毁后不可恢复。`,
-    '销毁确认',
-    { confirmButtonText: '确定销毁', cancelButtonText: '取消', type: 'warning' }
-  )
-    .then(() => {
-      ElMessage.success('已提交销毁请求（原型演示）')
-    })
-    .catch(() => {})
+  securityModalsRef.value?.openDestroyFlow?.(row)
 }
 
-const handleViewPassword = () => {
-  ElMessageBox.alert(
-    '为保护密钥安全，口令已脱敏展示。原型演示口令：********',
-    '密钥访问口令',
-    { confirmButtonText: '知道了' }
-  )
+const handleViewPassword = (row) => {
+  securityModalsRef.value?.openViewPasswordFlow?.(row)
 }
 </script>
 

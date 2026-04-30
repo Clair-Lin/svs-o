@@ -1,5 +1,6 @@
 <template>
   <div class="key-manage">
+    <KeyManageSecurityModals ref="securityModalsRef" />
     <div class="page-card">
       <el-tabs v-model="activeTab" class="key-manage-page-tabs">
         <el-tab-pane :label="tabCopy['0029'].tabLabel" name="0029" lazy>
@@ -14,24 +15,28 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, watchEffect } from 'vue'
+import { ref, watch, onMounted, watchEffect, provide } from 'vue'
 import { setPageBreadcrumbItems } from '@/composables/pageBreadcrumb'
 import { useRoute, useRouter } from 'vue-router'
 import KeyManage0029Panel from './KeyManage0029Panel.vue'
 import KeyManage0019Panel from './KeyManage0019Panel.vue'
+import KeyManageSecurityModals from './KeyManageSecurityModals.vue'
+import { KEY_MANAGE_SECURITY_KEY } from './keyManageSecurityKey.js'
 
 const route = useRoute()
 const router = useRouter()
 const activeTab = ref('0029')
+const securityModalsRef = ref(null)
+provide(KEY_MANAGE_SECURITY_KEY, securityModalsRef)
 
 /** Tab 与面包屑：标准号 + 规范简称，与密标委公开名称一致 */
 const tabCopy = {
   '0029': {
-    tabLabel: '签名验签服务器',
+    tabLabel: '签名验签服务器密钥',
     breadcrumb: '签名验签服务器技术规范'
   },
   '0019': {
-    tabLabel: '通用密码服务接口',
+    tabLabel: '通用密码服务接口密钥',
     breadcrumb: '通用密码服务接口规范'
   }
 }

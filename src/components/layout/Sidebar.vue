@@ -40,8 +40,8 @@
         <el-menu-item index="/key/manage">
           <template #title>密钥管理</template>
         </el-menu-item>
-        <!-- <el-menu-item index="/cert/manage">证书管理</el-menu-item>
-        <el-menu-item index="/cert/user">用户证书管理</el-menu-item> -->
+        <el-menu-item index="/cert/manage">证书管理</el-menu-item>
+        <el-menu-item index="/cert/user">用户证书管理</el-menu-item>
         <el-menu-item index="/cert/ca">CA根证管理</el-menu-item>
       </el-sub-menu>
 

@@ -121,7 +121,26 @@
             :key="item.label"
             class="biz-stat-strip__cell"
           >
-            <div class="biz-stat-strip__label">{{ item.label }}</div>
+            <div class="biz-stat-strip__label-row">
+              <span class="biz-stat-strip__label">{{ item.label }}</span>
+              <el-tooltip
+                v-if="item.showDetailTooltip"
+                effect="dark"
+                placement="top"
+                popper-class="biz-detail-tooltip"
+              >
+                <el-icon class="biz-stat-strip__info-icon"><InfoFilled /></el-icon>
+                <template #content>
+                  <div
+                    v-for="line in item.detailLines"
+                    :key="line"
+                    class="biz-detail-tooltip__line"
+                  >
+                    {{ line }}
+                  </div>
+                </template>
+              </el-tooltip>
+            </div>
             <div class="biz-stat-strip__value">{{ item.value }}</div>
             <div v-if="item.unit" class="biz-stat-strip__unit">{{ item.unit }}</div>
           </div>
@@ -132,7 +151,7 @@
         <div class="card-title">业务数据
         </div>
         <div class="biz-time-toolbar biz-time-toolbar--embedded">
-          <span class="biz-time-toolbar-label">时间维度</span>
+          <span class="biz-time-toolbar-label">快捷筛选</span>
           <el-button-group class="biz-preset-group">
             <el-button
               v-for="p in bizPresetOptions"
@@ -144,7 +163,16 @@
             </el-button>
           </el-button-group>
           <el-date-picker
-            v-model="bizDateRange"
+            v-model="bizDayMonth"
+            type="month"
+            size="small"
+            value-format="YYYY-MM"
+            placeholder="选择月份"
+            class="biz-month-picker"
+            @change="onBizDayMonthChange"
+          />
+          <el-date-picker
+            v-model="bizDayRange"
             type="daterange"
             unlink-panels
             size="small"
@@ -153,7 +181,7 @@
             end-placeholder="结束日期"
             value-format="YYYY-MM-DD"
             class="biz-date-range"
-            @change="onBizDateRangeChange"
+            @change="onBizDayRangeChange"
           />
         </div>
         <div class="biz-stat-strip">
@@ -164,6 +192,7 @@
           >
             <div class="biz-stat-strip__label-row">
               <span class="biz-stat-strip__label">{{ item.label }}</span>
+              <span v-if="item.unit" class="biz-stat-strip__unit biz-stat-strip__unit--inline">（{{ item.unit }}）</span>
               <el-tooltip
                 v-if="item.showDetailTooltip"
                 effect="dark"
@@ -196,7 +225,6 @@
               <div class="biz-stat-split__line biz-stat-split__line--success">成功：{{ item.successValue }}</div>
               <div class="biz-stat-split__line biz-stat-split__line--danger">失败：{{ item.failValue }}</div>
             </div>
-            <div v-if="item.unit" class="biz-stat-strip__unit">{{ item.unit }}</div>
           </div>
         </div>
       </div>
@@ -237,6 +265,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import * as echarts from 'echarts'
 import { Bell, InfoFilled } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 
 const pad2 = (n) => String(n).padStart(2, '0')
 
@@ -253,6 +282,15 @@ const addDays = (ymdStr, delta) => {
   return toYMD(d)
 }
 
+const toYM = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`
+
+const monthStartYMD = (ym) => `${ym}-01`
+
+const monthEndYMD = (ym) => {
+  const [y, m] = ym.split('-').map(Number)
+  return toYMD(new Date(y, m, 0))
+}
+
 const daysInclusiveRange = (startStr, endStr) => {
   const a = parseYMD(startStr).getTime()
   const b = parseYMD(endStr).getTime()
@@ -262,66 +300,78 @@ const daysInclusiveRange = (startStr, endStr) => {
 const formatInt = (n) => new Intl.NumberFormat('zh-CN').format(Math.max(0, Math.round(n)))
 
 const bizPresetOptions = [
-  { key: 'today', label: '今天' },
-  { key: 'yesterday', label: '昨天' },
-  { key: 'last7', label: '近7天' },
-  { key: 'last30', label: '近30天' }
+  { key: 'today', label: '今日' },
+  { key: 'yesterday', label: '昨日' },
+  { key: 'thisMonth', label: '本月' }
 ]
 
 const bizTimePreset = ref('today')
-const bizDateRange = ref([])
+const bizDayMonth = ref('')
+const bizDayRange = ref([])
 
 const todayStr = () => toYMD(new Date())
+const todayMonthStr = () => toYM(new Date())
 
 const applyBizPreset = (key) => {
   bizTimePreset.value = key
-  const t = todayStr()
+  const month = todayMonthStr()
+  const today = todayStr()
   if (key === 'today') {
-    bizDateRange.value = [t, t]
+    bizDayMonth.value = month
+    bizDayRange.value = [today, today]
     return
   }
   if (key === 'yesterday') {
-    const y = addDays(t, -1)
-    bizDateRange.value = [y, y]
+    const y = addDays(today, -1)
+    bizDayMonth.value = toYM(parseYMD(y))
+    bizDayRange.value = [y, y]
     return
   }
-  if (key === 'last7') {
-    bizDateRange.value = [addDays(t, -6), t]
-    return
-  }
-  if (key === 'last30') {
-    bizDateRange.value = [addDays(t, -29), t]
+  if (key === 'thisMonth') {
+    bizDayMonth.value = month
+    bizDayRange.value = [monthStartYMD(month), today]
   }
 }
 
-const detectPresetFromRange = (range) => {
-  if (!range || range.length !== 2) return 'custom'
-  const [start, end] = range
-  const t = todayStr()
-  if (start === end) {
-    if (start === t) return 'today'
-    if (start === addDays(t, -1)) return 'yesterday'
-    return 'custom'
-  }
-  if (end === t && start === addDays(t, -6)) return 'last7'
-  if (end === t && start === addDays(t, -29)) return 'last30'
-  return 'custom'
+const onBizDayMonthChange = (val) => {
+  if (!val) return
+  bizDayMonth.value = val
+  const start = monthStartYMD(val)
+  const end = val === todayMonthStr() ? todayStr() : monthEndYMD(val)
+  bizDayRange.value = [start, end]
+  bizTimePreset.value = 'custom'
 }
 
-const onBizDateRangeChange = (val) => {
-  if (!val || val.length !== 2) return
-  bizTimePreset.value = detectPresetFromRange(val)
+const onBizDayRangeChange = (val) => {
+  if (!val || val.length !== 2 || !bizDayMonth.value) return
+  const startMonth = toYM(parseYMD(val[0]))
+  const endMonth = toYM(parseYMD(val[1]))
+  if (startMonth !== bizDayMonth.value || endMonth !== bizDayMonth.value) {
+    const start = monthStartYMD(bizDayMonth.value)
+    const end = bizDayMonth.value === todayMonthStr() ? todayStr() : monthEndYMD(bizDayMonth.value)
+    bizDayRange.value = [start, end]
+    ElMessage.error('暂不支持跨月查询')
+    return
+  }
+  bizTimePreset.value = 'custom'
 }
+
+const bizEffectiveRange = computed(() => {
+  const r = bizDayRange.value
+  if (!r || r.length !== 2) {
+    const m = bizDayMonth.value || todayMonthStr()
+    return [monthStartYMD(m), m === todayMonthStr() ? todayStr() : monthEndYMD(m)]
+  }
+  return r
+})
 
 const bizRangeDayCount = computed(() => {
-  const r = bizDateRange.value
-  if (!r || r.length !== 2) return 1
-  return daysInclusiveRange(r[0], r[1])
+  return daysInclusiveRange(bizEffectiveRange.value[0], bizEffectiveRange.value[1])
 })
 
 /** 单日且为今天 / 昨天（用于单位文案与昨日示例数据区分） */
 const isBizRangeTodayOnly = computed(() => {
-  const r = bizDateRange.value
+  const r = bizEffectiveRange.value
   if (!r || r.length !== 2) return false
   const [s, e] = r
   const t = todayStr()
@@ -329,7 +379,7 @@ const isBizRangeTodayOnly = computed(() => {
 })
 
 const isBizRangeYesterdayOnly = computed(() => {
-  const r = bizDateRange.value
+  const r = bizEffectiveRange.value
   if (!r || r.length !== 2) return false
   const [s, e] = r
   const y = addDays(todayStr(), -1)
@@ -337,7 +387,12 @@ const isBizRangeYesterdayOnly = computed(() => {
 })
 
 const businessFixedBases = [
-  { label: '证书数量', value: 156, unit: '张' },
+  {
+    label: '证书数量',
+    value: 156,
+    unit: '张',
+    detailLines: ['根证书：24 张', '签名证书：72 张', '用户证书：60 张']
+  },
   { label: '应用实体数量', value: 12, unit: '个' },
   { label: '并发连接数', value: 42, unit: '路' }
 ]
@@ -346,7 +401,9 @@ const businessStatsFixed = computed(() =>
   businessFixedBases.map((row) => ({
     label: row.label,
     value: formatInt(row.value),
-    unit: row.unit
+    unit: row.unit,
+    detailLines: row.detailLines || [],
+    showDetailTooltip: Array.isArray(row.detailLines) && row.detailLines.length > 0
   }))
 )
 
@@ -402,11 +459,7 @@ const businessTimedBases = [
 ]
 
 const bizTimedUnitLabel = computed(() => {
-  const days = bizRangeDayCount.value
-  if (days !== 1) return `次（${days}天合计）`
-  if (isBizRangeTodayOnly.value) return '次（今日）'
-  if (isBizRangeYesterdayOnly.value) return '次（昨日）'
-  return '次（所选日）'
+  return '次'
 })
 
 const businessStatsTimed = computed(() => {
@@ -650,6 +703,11 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
+.biz-month-picker {
+  width: 150px;
+  max-width: 100%;
+}
+
 .biz-date-range {
   width: 220px;
   max-width: 100%;
@@ -715,6 +773,10 @@ onUnmounted(() => {
   color: $text-primary;
   margin-top: 6px;
   line-height: 1.3;
+}
+
+.biz-stat-strip__unit--inline {
+  margin-top: 0;
 }
 
 .biz-stat-split {
