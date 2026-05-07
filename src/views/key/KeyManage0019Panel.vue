@@ -7,7 +7,8 @@
 
     <el-table :data="pagedKeyList" border stripe>
       <el-table-column prop="containerName" label="容器名" min-width="180" />
-      <el-table-column prop="algorithmSpec" label="算法" width="120" />
+      <el-table-column prop="keyAlgorithm" label="密钥算法" width="110" />
+      <el-table-column prop="keyLength" label="密钥长度" width="100" align="center" />
       <el-table-column prop="usageLabel" label="用途" width="120" />
       <el-table-column label="绑定证书" min-width="180" show-overflow-tooltip>
         <template #default="{ row }">
@@ -18,7 +19,9 @@
       <el-table-column label="操作" fixed="right" width="280">
         <template #default="{ row }">
           <el-button type="primary" size="small" link @click="handleDetail(row)">详情</el-button>
-          <el-button type="primary" size="small" link @click="openBindCertDialog(row)">关联证书</el-button>
+          <el-button type="primary" size="small" link @click="openBindCertDialog(row)">
+            {{ hasAnyCertBound(row) ? '更换证书' : '关联证书' }}
+          </el-button>
           <el-button type="primary" size="small" link @click="handleBackup(row)">备份</el-button>
           <el-button type="primary" size="small" link @click="handleDestroy(row)">销毁</el-button>
         </template>
@@ -46,17 +49,26 @@
         <el-form-item label="容器名" prop="containerName">
           <el-input v-model="keyForm.containerName" clearable placeholder="手动输入，唯一" />
         </el-form-item>
-        <el-form-item label="密码算法" prop="algorithmSpec">
-          <el-select v-model="keyForm.algorithmSpec" style="width: 100%">
-            <el-option label="SM2_256" value="SM2_256" />
-            <el-option label="RSA_2048" value="RSA_2048" />
+        <el-form-item label="密钥算法" prop="keyAlgorithm">
+          <el-select v-model="keyForm.keyAlgorithm" style="width: 100%" @change="handleCreateAlgorithmChange">
+            <el-option label="SM2" value="SM2" />
+            <el-option label="RSA" value="RSA" />
           </el-select>
         </el-form-item>
-        <el-form-item label="密钥用途" prop="usageLabel">
-          <el-select v-model="keyForm.usageLabel" style="width: 100%">
-            <el-option label="签名验签" value="签名验签" />
-            <el-option label="加密解密" value="加密解密" />
+        <el-form-item label="密钥长度" prop="keyLength">
+          <el-select v-model="keyForm.keyLength" style="width: 100%">
+            <el-option
+              v-for="len in createAvailableKeyLengths"
+              :key="len"
+              :label="String(len)"
+              :value="len"
+            />
           </el-select>
+        </el-form-item>
+        <el-form-item label="密钥用途">
+          <el-radio-group v-model="keyForm.usageLabel">
+            <el-radio value="签名验签">签名验签</el-radio>
+          </el-radio-group>
         </el-form-item>
         <el-form-item label="PIN" prop="password">
           <el-input
@@ -83,16 +95,16 @@
           <span class="detail-p2-value">{{ currentKey.containerName }}</span>
         </div>
         <div class="detail-p2-row">
-          <span class="detail-p2-label">密码算法</span>
-          <span class="detail-p2-value">{{ currentKey.algorithmSpec }}</span>
+          <span class="detail-p2-label">密钥算法</span>
+          <span class="detail-p2-value">{{ currentKey.keyAlgorithm }}</span>
+        </div>
+        <div class="detail-p2-row">
+          <span class="detail-p2-label">密钥长度</span>
+          <span class="detail-p2-value">{{ currentKey.keyLength }}</span>
         </div>
         <div class="detail-p2-row">
           <span class="detail-p2-label">密钥用途</span>
           <span class="detail-p2-value">{{ currentKey.usageLabel }}</span>
-        </div>
-        <div class="detail-p2-row">
-          <span class="detail-p2-label">公钥内容</span>
-          <span class="detail-p2-value detail-p2-value--pre">{{ currentKey.publicKeyContent }}</span>
         </div>
         <div class="detail-p2-row">
           <span class="detail-p2-label">绑定证书</span>
@@ -128,7 +140,7 @@
                 :disabled="!row.enabled"
                 @click="openBindCertDialog(currentKey, row.purpose)"
               >
-                关联证书
+                {{ row.bound ? '更换证书' : '关联证书' }}
               </el-button>
             </template>
           </el-table-column>
@@ -138,74 +150,34 @@
 
     <el-dialog
       v-model="bindCertDialogVisible"
-      title="绑定证书"
-      width="620px"
+      :title="bindCertDialogTitle"
+      width="520px"
       :close-on-click-modal="false"
       @closed="resetBindDialog"
     >
-      <div v-if="bindTargetRow" class="bind-cert-body">
-        <div class="bind-row">
-          <span class="bind-label">容器名:</span>
+      <el-form v-if="bindTargetRow" label-width="100px" class="bind-cert-form">
+        <el-form-item label="容器名">
           <span>{{ bindTargetRow.containerName }}</span>
-        </div>
-        <div class="bind-row" v-if="bindStep === 1">
-          <span class="bind-label">密钥用途:</span>
-          <el-radio-group v-model="bindPurpose">
-            <el-radio value="sign">签名密钥对证书</el-radio>
-            <el-radio value="encrypt" :disabled="!bindTargetRow.hasEncryptKeyPair">加密密钥对证书</el-radio>
-          </el-radio-group>
-        </div>
-        <div class="bind-row" v-else>
-          <span class="bind-label">密钥用途:</span>
-          <span>{{ purposeLabel(bindPurpose) }}</span>
-        </div>
+        </el-form-item>
+        <el-form-item label="密钥用途">
+          <span>签名验签</span>
+        </el-form-item>
 
-        <template v-if="bindStep === 1">
-          <div class="bind-row">
-            <span class="bind-label">关联证书:</span>
-            <el-button @click="openAssociateCertDialog">关联证书</el-button>
-            <span v-if="selectedAppCert" class="bind-file-name">{{ selectedAppCert.appCertName }}</span>
+        <el-form-item label="选择证书">
+          <div class="bind-select-cert">
+            <el-input
+              :value="selectedAppCert?.appCertName ?? ''"
+              placeholder="请选择要绑定的证书"
+              readonly
+              class="bind-select-input"
+            />
+            <el-button type="primary" @click="openAssociateCertDialog">选择</el-button>
           </div>
-        </template>
-
-        <template v-else>
-          <div class="cert-preview-title">证书信息:</div>
-          <div class="cert-preview-box">
-            <div class="cert-preview-row"><span>主体(CN):</span><span>{{ certPreview.subjectCn }}</span></div>
-            <div class="cert-preview-row"><span>颁发者(CN):</span><span>{{ certPreview.issuerCn }}</span></div>
-            <div class="cert-preview-row"><span>序列号:</span><span>{{ certPreview.serialNumber }}</span></div>
-            <div class="cert-preview-row"><span>有效期:</span><span>{{ certPreview.validFrom }} ~ {{ certPreview.validTo }}</span></div>
-            <div class="cert-preview-row"><span>公钥算法:</span><span>{{ certPreview.publicKeyAlgorithm }}</span></div>
-            <div class="cert-preview-row"><span>用途:</span><span>{{ certPreview.usages.join('、') }}</span></div>
-          </div>
-          <div class="validate-line" :class="{ ok: certValidate.algorithmMatch, fail: !certValidate.algorithmMatch }">
-            {{ certValidate.algorithmMatch ? '✓' : '✗' }}
-            证书公钥与容器密钥算法{{ certValidate.algorithmMatch ? '匹配' : '不匹配' }}
-          </div>
-          <div class="validate-line" :class="{ ok: certValidate.purposeMatch, fail: !certValidate.purposeMatch }">
-            {{ certValidate.purposeMatch ? '✓' : '✗' }}
-            证书用途{{ certValidate.purposeMatch ? '匹配' : `不含"${bindPurpose === 'sign' ? '数字签名' : '密钥加密'}"` }}
-          </div>
-          <el-alert
-            v-if="bindErrorMsg"
-            :title="bindErrorMsg"
-            type="error"
-            :closable="false"
-            class="bind-error"
-          />
-        </template>
-      </div>
+        </el-form-item>
+      </el-form>
       <template #footer>
         <el-button @click="bindCertDialogVisible = false">取消</el-button>
-        <el-button
-          v-if="bindStep === 1"
-          type="primary"
-          :disabled="!selectedAppCert"
-          @click="goBindPreview"
-        >
-          下一步
-        </el-button>
-        <el-button v-else type="primary" :loading="bindingSubmitting" @click="confirmBindCert">
+        <el-button type="primary" :disabled="!selectedAppCert" :loading="bindingSubmitting" @click="confirmBindCert">
           确认绑定
         </el-button>
       </template>
@@ -214,28 +186,32 @@
     <el-dialog
       v-model="associateDialogVisible"
       title="关联已有应用证书"
-      width="1020px"
+      width="800px"
       :close-on-click-modal="false"
     >
       <el-table
-        ref="appCertTableRef"
         :data="applicationCertList"
         border
         stripe
+        highlight-current-row
         max-height="360"
-        @selection-change="handleAppCertSelectionChange"
+        @row-click="handleAppCertRowClick"
       >
-        <el-table-column type="selection" width="50" />
-        <el-table-column prop="appCertName" label="应用证书名称/ID" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="algorithm" label="算法" width="100" />
-        <el-table-column prop="issuerCn" label="颁发者" min-width="150" show-overflow-tooltip />
+        <el-table-column width="50" align="center">
+          <template #default="{ row }">
+            <el-radio v-model="associateRadioId" :value="row.id">&nbsp;</el-radio>
+          </template>
+        </el-table-column>
+        <el-table-column prop="appCertName" label="应用证书名称" min-width="180" show-overflow-tooltip />
+        <el-table-column prop="algorithm" label="算法" width="80" align="center" />
+        <el-table-column prop="issuerCn" label="颁发者" min-width="140" show-overflow-tooltip />
         <el-table-column prop="serialNumber" label="证书序列号" min-width="160" show-overflow-tooltip />
-        <el-table-column prop="appliedDate" label="申请日期" width="140" />
-        <el-table-column prop="expireDate" label="到期时间" width="140" />
+        <el-table-column prop="appliedDate" label="申请日期" width="120" align="center" />
+        <el-table-column prop="expireDate" label="到期时间" width="120" align="center" />
       </el-table>
       <template #footer>
         <el-button @click="associateDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmAssociateCert">确定</el-button>
+        <el-button type="primary" :disabled="!associateRadioId" @click="confirmAssociateCert">确定</el-button>
       </template>
     </el-dialog>
   </div>
@@ -254,27 +230,38 @@ const currentKey = ref(null)
 const formRef = ref(null)
 const securityModalsRef = inject(KEY_MANAGE_SECURITY_KEY) ?? ref(null)
 const bindCertDialogVisible = ref(false)
-const bindStep = ref(1)
 const bindTargetRow = ref(null)
 const bindPurpose = ref('sign')
 const selectedAppCert = ref(null)
 const bindingSubmitting = ref(false)
-const bindErrorMsg = ref('')
 const associateDialogVisible = ref(false)
-const appCertTableRef = ref(null)
-const associateSelectedRows = ref([])
+const associateRadioId = ref(null)
 
 const keyForm = reactive({
   containerName: '',
-  algorithmSpec: 'SM2_256',
+  keyAlgorithm: 'SM2',
+  keyLength: 256,
   usageLabel: '签名验签',
   password: ''
 })
 
+/** 生成容器：各算法可选密钥长度（位） */
+const CREATE_KEY_LENGTHS_BY_ALGORITHM = {
+  SM2: [256],
+  RSA: [2048]
+}
+
+const createAvailableKeyLengths = computed(() => CREATE_KEY_LENGTHS_BY_ALGORITHM[keyForm.keyAlgorithm] ?? [256])
+
+function handleCreateAlgorithmChange () {
+  const sizes = CREATE_KEY_LENGTHS_BY_ALGORITHM[keyForm.keyAlgorithm]
+  keyForm.keyLength = sizes?.length ? sizes[0] : 256
+}
+
 const keyRules = {
   containerName: [{ required: true, message: '请输入容器名', trigger: 'blur' }],
-  algorithmSpec: [{ required: true, message: '请选择密码算法', trigger: 'change' }],
-  usageLabel: [{ required: true, message: '请选择密钥用途', trigger: 'change' }],
+  keyAlgorithm: [{ required: true, message: '请选择密钥算法', trigger: 'change' }],
+  keyLength: [{ required: true, message: '请选择密钥长度', trigger: 'change' }],
   password: [
     { required: true, message: '请输入 PIN', trigger: 'blur' },
     { min: 6, max: 32, message: '长度在 6 到 32 个字符', trigger: 'blur' }
@@ -285,10 +272,10 @@ const keyList = ref([
   {
     keyId: 'SVS_userA',
     containerName: 'SVS_userA',
-    algorithmSpec: 'SM2_256',
+    keyAlgorithm: 'SM2',
+    keyLength: 256,
     usageLabel: '签名验签',
     hasSignKeyPair: true,
-    hasEncryptKeyPair: false,
     certBindings: {
       sign: {
         subjectCn: 'CN=用户A',
@@ -298,8 +285,7 @@ const keyList = ref([
         serialNumber: '1A2B3C4D5E8899',
         publicKeyAlgorithm: 'SM2 256bit',
         usages: ['数字签名']
-      },
-      encrypt: null
+      }
     },
     publicKeyContent: '-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoEcz1UBgi0DQgAE6f4Mwl7F9qJQxM7kR8I5f2Q1c0hN\np0j4R1sD8n7xS2t9M6kY7h1Qxw3aD2Y9V6t8r1L5j2f9m0v8q3x2Yw==\n-----END PUBLIC KEY-----',
     addedTime: '2026-04-30 10:00:00'
@@ -307,13 +293,12 @@ const keyList = ref([
   {
     keyId: 'SVS_userB',
     containerName: 'SVS_userB',
-    algorithmSpec: 'SM2_256',
+    keyAlgorithm: 'SM2',
+    keyLength: 256,
     usageLabel: '签名验签',
     hasSignKeyPair: true,
-    hasEncryptKeyPair: true,
     certBindings: {
-      sign: null,
-      encrypt: null
+      sign: null
     },
     publicKeyContent: '-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoEcz1UBgi0DQgAE8r2Jm6kN9xS3p4Qw7tY2v1c0hN5L\nq8p3D1sF6n9xT2v7B5kY4h1Qxw3aD2Y9V6t8r1L5j2f9m0v8q3x2Yw==\n-----END PUBLIC KEY-----',
     addedTime: '2026-04-30 10:01:00'
@@ -357,26 +342,10 @@ const pagedKeyList = computed(() => {
   return list.slice(start, start + pageSize.value)
 })
 
-const certPreview = reactive({
-  subjectCn: '',
-  issuerCn: '',
-  serialNumber: '',
-  validFrom: '',
-  validTo: '',
-  publicKeyAlgorithm: '',
-  usages: []
-})
-
-const certValidate = reactive({
-  algorithmMatch: true,
-  purposeMatch: true
-})
-
 const detailCertRows = computed(() => {
   const row = currentKey.value
   if (!row) return []
   const signCert = row.certBindings?.sign
-  const encCert = row.certBindings?.encrypt
   return [
     {
       purpose: 'sign',
@@ -386,33 +355,32 @@ const detailCertRows = computed(() => {
       subjectCn: signCert?.subjectCn ?? '（未绑定）',
       issuerCn: signCert?.issuerCn ?? '—',
       validity: signCert ? `${signCert.validFrom} ~ ${signCert.validTo}` : '—'
-    },
-    {
-      purpose: 'encrypt',
-      purposeLabel: '加密密钥对证书',
-      bound: Boolean(encCert),
-      enabled: row.hasEncryptKeyPair,
-      subjectCn: encCert?.subjectCn ?? '（未绑定）',
-      issuerCn: encCert?.issuerCn ?? '—',
-      validity: encCert ? `${encCert.validFrom} ~ ${encCert.validTo}` : '—'
     }
   ]
 })
 
-function purposeLabel (purpose) {
-  return purpose === 'encrypt' ? '加密密钥对证书' : '签名密钥对证书'
+function getCertDisplay (row) {
+  return row.certBindings?.sign?.subjectCn || '未绑定'
 }
 
-function getCertDisplay (row) {
-  const signCn = row.certBindings?.sign?.subjectCn
-  const encryptCn = row.certBindings?.encrypt?.subjectCn
-  return signCn || encryptCn || '未绑定'
+/** 容器是否已绑定签名证书（列表主操作：关联 / 更换） */
+function hasAnyCertBound (row) {
+  return Boolean(row?.certBindings?.sign)
 }
+
+const bindPurposeSlotHasCert = computed(() => {
+  const row = bindTargetRow.value
+  if (!row?.certBindings) return false
+  return Boolean(row.certBindings[bindPurpose.value])
+})
+
+const bindCertDialogTitle = computed(() => (bindPurposeSlotHasCert.value ? '更换证书' : '绑定证书'))
 
 const handleCreate = () => {
   Object.assign(keyForm, {
     containerName: '',
-    algorithmSpec: 'SM2_256',
+    keyAlgorithm: 'SM2',
+    keyLength: 256,
     usageLabel: '签名验签',
     password: ''
   })
@@ -450,58 +418,31 @@ const handleDestroy = (row) => {
   securityModalsRef.value?.openDestroyFlow?.(row)
 }
 
-function openBindCertDialog (row, presetPurpose = '') {
+function openBindCertDialog (row) {
   bindTargetRow.value = row
-  bindPurpose.value = presetPurpose || (row.hasSignKeyPair ? 'sign' : 'encrypt')
-  bindStep.value = 1
-  bindErrorMsg.value = ''
+  bindPurpose.value = 'sign'
   selectedAppCert.value = null
   bindCertDialogVisible.value = true
 }
 
 function resetBindDialog () {
   bindTargetRow.value = null
-  bindStep.value = 1
   selectedAppCert.value = null
-  associateSelectedRows.value = []
+  associateRadioId.value = null
   bindingSubmitting.value = false
-  bindErrorMsg.value = ''
-  Object.assign(certPreview, {
-    subjectCn: '',
-    issuerCn: '',
-    serialNumber: '',
-    validFrom: '',
-    validTo: '',
-    publicKeyAlgorithm: '',
-    usages: []
-  })
-  Object.assign(certValidate, {
-    algorithmMatch: true,
-    purposeMatch: true
-  })
 }
 
 function openAssociateCertDialog () {
-  associateSelectedRows.value = selectedAppCert.value ? [selectedAppCert.value] : []
+  associateRadioId.value = selectedAppCert.value?.id ?? null
   associateDialogVisible.value = true
 }
 
-function handleAppCertSelectionChange (rows) {
-  const last = rows[rows.length - 1]
-  if (!last) {
-    associateSelectedRows.value = []
-    return
-  }
-  associateSelectedRows.value = [last]
-  const table = appCertTableRef.value
-  if (!table) return
-  applicationCertList.value.forEach((item) => {
-    table.toggleRowSelection(item, item.id === last.id)
-  })
+function handleAppCertRowClick (row) {
+  associateRadioId.value = row.id
 }
 
 function confirmAssociateCert () {
-  const picked = associateSelectedRows.value[0]
+  const picked = applicationCertList.value.find(c => c.id === associateRadioId.value)
   if (!picked) {
     ElMessage.warning('请选择要关联的应用证书')
     return
@@ -510,52 +451,21 @@ function confirmAssociateCert () {
   associateDialogVisible.value = false
 }
 
-async function goBindPreview () {
-  if (!bindTargetRow.value || !selectedAppCert.value) return
-  try {
-    Object.assign(certPreview, {
-      subjectCn: selectedAppCert.value.subjectCn,
-      issuerCn: selectedAppCert.value.issuerCn,
-      serialNumber: selectedAppCert.value.serialNumber,
-      validFrom: selectedAppCert.value.validFrom,
-      validTo: selectedAppCert.value.validTo,
-      publicKeyAlgorithm: selectedAppCert.value.publicKeyAlgorithm,
-      usages: [...selectedAppCert.value.usages]
-    })
-    certValidate.algorithmMatch =
-      bindTargetRow.value.algorithmSpec.startsWith('SM2')
-        ? certPreview.publicKeyAlgorithm.includes('SM2')
-        : certPreview.publicKeyAlgorithm.includes('RSA')
-    certValidate.purposeMatch = bindPurpose.value === 'sign'
-      ? certPreview.usages.includes('数字签名')
-      : certPreview.usages.includes('密钥加密')
-    bindErrorMsg.value = ''
-    bindStep.value = 2
-  } catch (err) {
-    bindErrorMsg.value = `证书解析失败：${err?.message || '证书格式不支持'}`
-    ElMessage.error('证书解析失败，请确认文件格式是否正确')
-  }
-}
-
 function confirmBindCert () {
   const row = bindTargetRow.value
-  if (!row) return
+  if (!row || !selectedAppCert.value) return
   bindingSubmitting.value = true
-  bindErrorMsg.value = ''
   setTimeout(() => {
     bindingSubmitting.value = false
-    if (selectedAppCert.value?.id === 'fail') {
-      bindErrorMsg.value = '绑定失败：证书格式不支持或容器不存在，请检查后重试。'
-      return
-    }
+    const cert = selectedAppCert.value
     row.certBindings[bindPurpose.value] = {
-      subjectCn: certPreview.subjectCn,
-      issuerCn: certPreview.issuerCn,
-      serialNumber: certPreview.serialNumber,
-      validFrom: certPreview.validFrom,
-      validTo: certPreview.validTo,
-      publicKeyAlgorithm: certPreview.publicKeyAlgorithm,
-      usages: [...certPreview.usages]
+      subjectCn: cert.subjectCn,
+      issuerCn: cert.issuerCn,
+      serialNumber: cert.serialNumber,
+      validFrom: cert.validFrom,
+      validTo: cert.validTo,
+      publicKeyAlgorithm: cert.publicKeyAlgorithm,
+      usages: [...cert.usages]
     }
     bindCertDialogVisible.value = false
     ElMessage.success('证书绑定成功（SAF_SetCertificate 原型演示）')
@@ -620,10 +530,6 @@ function handleViewCert (row, purpose) {
   word-break: break-all;
 }
 
-.detail-p2-value--pre {
-  white-space: pre-wrap;
-}
-
 .cert-info-block {
   margin-top: 12px;
 }
@@ -635,67 +541,27 @@ function handleViewCert (row, purpose) {
   font-weight: 600;
 }
 
-.bind-cert-body {
-  min-height: 220px;
+.bind-cert-form {
+  .el-form-item__label {
+    color: $text-secondary;
+  }
+
+  .el-form-item__content {
+    > span {
+      color: $text-primary;
+      font-size: 14px;
+    }
+  }
 }
 
-.bind-row {
+.bind-select-cert {
   display: flex;
-  align-items: center;
   gap: 8px;
-  margin-bottom: 14px;
-}
+  width: 100%;
 
-.bind-label {
-  width: 80px;
-  color: $text-secondary;
-  flex-shrink: 0;
-}
-
-.bind-upload {
-  display: inline-flex;
-}
-
-.bind-file-name {
-  color: $text-secondary;
-  font-size: 13px;
-}
-
-.cert-preview-title {
-  margin: 2px 0 8px;
-  color: $text-secondary;
-}
-
-.cert-preview-box {
-  border: 1px solid $border-color;
-  border-radius: 4px;
-  padding: 10px 12px;
-  margin-bottom: 10px;
-}
-
-.cert-preview-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  line-height: 24px;
-  font-size: 13px;
-}
-
-.validate-line {
-  margin-bottom: 6px;
-  font-size: 13px;
-}
-
-.validate-line.ok {
-  color: #52c41a;
-}
-
-.validate-line.fail {
-  color: #f5222d;
-}
-
-.bind-error {
-  margin-top: 10px;
+  .bind-select-input {
+    flex: 1;
+  }
 }
 
 </style>

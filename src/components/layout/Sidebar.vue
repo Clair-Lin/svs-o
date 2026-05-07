@@ -38,9 +38,9 @@
           <span>签名验签服务</span>
         </template>
         <el-menu-item index="/key/manage">
-          <template #title>密钥管理</template>
+          <template #title>密钥管理<el-tag type="danger" effect="dark" size="small" style="margin-left: 6px;">新</el-tag></template>
         </el-menu-item>
-        <el-menu-item index="/cert/manage">证书管理</el-menu-item>
+        <el-menu-item index="/cert/manage">证书管理 <el-tag type="danger" effect="dark" size="small" style="margin-left: 6px;">新</el-tag></el-menu-item>
         <el-menu-item index="/cert/user">用户证书管理</el-menu-item>
         <el-menu-item index="/cert/ca">CA根证管理</el-menu-item>
       </el-sub-menu>
