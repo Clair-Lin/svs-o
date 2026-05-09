@@ -34,28 +34,48 @@
           </div>
         </div>
         <div class="filter-row filter-row--second">
-          <div class="filter-item filter-item--range">
-            <span class="filter-label">生效时间</span>
+          <div class="filter-item filter-item--datepair">
+            <span class="filter-label">生效开始时间</span>
             <el-date-picker
-              v-model="filterNotBeforeRange"
-              type="daterange"
-              range-separator="至"
-              start-placeholder="开始日期"
-              end-placeholder="结束日期"
+              v-model="filterNotBeforeStart"
+              type="date"
+              placeholder="开始日期"
               value-format="YYYY-MM-DD"
-              class="filter-daterange"
+              clearable
+              class="filter-date-single"
             />
           </div>
-          <div class="filter-item filter-item--range">
-            <span class="filter-label">过期时间</span>
+          <div class="filter-item filter-item--datepair">
+            <span class="filter-label">生效结束时间</span>
             <el-date-picker
-              v-model="filterNotAfterRange"
-              type="daterange"
-              range-separator="至"
-              start-placeholder="开始日期"
-              end-placeholder="结束日期"
+              v-model="filterNotBeforeEnd"
+              type="date"
+              placeholder="结束日期"
               value-format="YYYY-MM-DD"
-              class="filter-daterange"
+              clearable
+              class="filter-date-single"
+            />
+          </div>
+          <div class="filter-item filter-item--datepair">
+            <span class="filter-label">过期开始时间</span>
+            <el-date-picker
+              v-model="filterNotAfterStart"
+              type="date"
+              placeholder="开始日期"
+              value-format="YYYY-MM-DD"
+              clearable
+              class="filter-date-single"
+            />
+          </div>
+          <div class="filter-item filter-item--datepair">
+            <span class="filter-label">过期结束时间</span>
+            <el-date-picker
+              v-model="filterNotAfterEnd"
+              type="date"
+              placeholder="结束日期"
+              value-format="YYYY-MM-DD"
+              clearable
+              class="filter-date-single"
             />
           </div>
           <div class="filter-item filter-actions">
@@ -190,10 +210,14 @@ const filterDn = ref('')
 const queryDn = ref('')
 const filterStatus = ref('all')
 const queryStatus = ref('all')
-const filterNotBeforeRange = ref(null)
-const queryNotBeforeRange = ref(null)
-const filterNotAfterRange = ref(null)
-const queryNotAfterRange = ref(null)
+const filterNotBeforeStart = ref('')
+const filterNotBeforeEnd = ref('')
+const filterNotAfterStart = ref('')
+const filterNotAfterEnd = ref('')
+const queryNotBeforeStart = ref('')
+const queryNotBeforeEnd = ref('')
+const queryNotAfterStart = ref('')
+const queryNotAfterEnd = ref('')
 
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -319,30 +343,36 @@ function dnFuzzyMatch (certLabel, queryRaw) {
   return tokens.every((t) => hay.includes(t))
 }
 
-/** CA名称、DN、状态、生效/过期独立日期范围（AND） */
+/** 按查询条件筛一行日期字段：仅开始 / 仅结束 / 两端（颠倒顺序时取闭区间） */
+function rowDateMatchesBound (rowYmd, qStart, qEnd) {
+  const s = (qStart || '').trim()
+  const e = (qEnd || '').trim()
+  if (!s && !e) return true
+  const v = rowYmd
+  if (!v) return false
+  if (s && e) {
+    const lo = s <= e ? s : e
+    const hi = s <= e ? e : s
+    return v >= lo && v <= hi
+  }
+  if (s) return v >= s
+  return v <= e
+}
+
+/** CA名称、DN、状态、生效/过期独立日期边界（AND） */
 const filteredList = computed(() => {
   const q = queryCaName.value.trim().toLowerCase()
   const st = queryStatus.value
-
-  const nbRange = queryNotBeforeRange.value
-  const nbOk = Array.isArray(nbRange) && nbRange.length === 2 && nbRange[0] && nbRange[1]
-  const [nbStart, nbEnd] = nbOk ? nbRange : [null, null]
-
-  const naRange = queryNotAfterRange.value
-  const naOk = Array.isArray(naRange) && naRange.length === 2 && naRange[0] && naRange[1]
-  const [naStart, naEnd] = naOk ? naRange : [null, null]
 
   return list.value.filter((row) => {
     if (q && !row.caName.toLowerCase().includes(q)) return false
     if (!dnFuzzyMatch(row.certLabel, queryDn.value)) return false
 
-    if (nbOk) {
-      const nb = row.notBefore
-      if (!nb || nb < nbStart || nb > nbEnd) return false
+    if (!rowDateMatchesBound(row.notBefore, queryNotBeforeStart.value, queryNotBeforeEnd.value)) {
+      return false
     }
-    if (naOk) {
-      const na = row.notAfter
-      if (!na || na < naStart || na > naEnd) return false
+    if (!rowDateMatchesBound(row.notAfter, queryNotAfterStart.value, queryNotAfterEnd.value)) {
+      return false
     }
 
     if (st !== 'all' && rowCertState(row) !== st) return false
@@ -415,8 +445,10 @@ const handleSearch = () => {
   queryCaName.value = filterCaName.value
   queryDn.value = filterDn.value
   queryStatus.value = filterStatus.value
-  queryNotBeforeRange.value = filterNotBeforeRange.value ? [...filterNotBeforeRange.value] : null
-  queryNotAfterRange.value = filterNotAfterRange.value ? [...filterNotAfterRange.value] : null
+  queryNotBeforeStart.value = filterNotBeforeStart.value || ''
+  queryNotBeforeEnd.value = filterNotBeforeEnd.value || ''
+  queryNotAfterStart.value = filterNotAfterStart.value || ''
+  queryNotAfterEnd.value = filterNotAfterEnd.value || ''
   currentPage.value = 1
 }
 
@@ -427,10 +459,14 @@ const handleReset = () => {
   queryDn.value = ''
   filterStatus.value = 'all'
   queryStatus.value = 'all'
-  filterNotBeforeRange.value = null
-  queryNotBeforeRange.value = null
-  filterNotAfterRange.value = null
-  queryNotAfterRange.value = null
+  filterNotBeforeStart.value = ''
+  filterNotBeforeEnd.value = ''
+  filterNotAfterStart.value = ''
+  filterNotAfterEnd.value = ''
+  queryNotBeforeStart.value = ''
+  queryNotBeforeEnd.value = ''
+  queryNotAfterStart.value = ''
+  queryNotAfterEnd.value = ''
   currentPage.value = 1
 }
 
@@ -540,13 +576,13 @@ const handleDelete = (row) => {
   width: 150px;
 }
 
-.filter-item--range {
+.filter-item--datepair {
   flex: 0 0 auto;
   align-items: center;
 }
 
-.filter-daterange {
-  width: 280px;
+.filter-date-single {
+  width: 160px;
 }
 
 /* 列表 12px；仅表头浅灰，表体全白 */

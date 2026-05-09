@@ -12,38 +12,11 @@
           加密卡检测<strong>无需选择签名证书</strong>，可直接点击「开始检查」。
         </template>
         <template v-else>
-          检测前需完成 <strong>CA 根证</strong>、<strong>CRL</strong> 配置并<strong>选择用户签名证书</strong>。点击「选择证书」将自动校验根证与 CRL；二者均已配置后，方可从下拉框中选择签名证书；<strong>未选择证书时无法开始检测</strong>。若检测因证书或信任链问题导致接口异常，请按提示补全配置后再检。
+          检测前需完成 <strong>CA 根证</strong>、<strong>CRL</strong> 配置并<strong>选择用户签名证书</strong>。点击「检测CA根证」将自动校验根证与 CRL；二者均已配置后，方可从下拉框中选择签名证书；<strong>未选择证书时无法开始检测</strong>。若检测因证书或信任链问题导致接口异常，请按提示补全配置后再检。
         </template>
       </el-alert>
-      <div v-show="needsSignCertForMode" class="cert-picker-bar">
-        <span class="config-label">签名证书</span>
-        <el-button
-          type="primary"
-          plain
-          :loading="certPreChecking"
-          @click="runCertPrereqAndOpenSelect"
-        >
-          选择证书
-        </el-button>
-        <el-select
-          ref="signCertSelectRef"
-          v-model="selectedSignCertId"
-          :placeholder="signCertSelectPlaceholder"
-          :disabled="!signCertPickerUnlocked"
-          filterable
-          clearable
-          class="cert-picker-select"
-        >
-          <el-option
-            v-for="opt in signCertOptions"
-            :key="opt.value"
-            :label="opt.label"
-            :value="opt.value"
-          />
-        </el-select>
-      </div>
       <div class="config-panel">
-        <div class="config-panel__left">
+        <div class="config-panel__mode-row">
           <span class="config-label">检测方式：</span>
           <el-radio-group v-model="detectType" class="check-method-segment">
             <el-radio-button label="all">全部检测</el-radio-button>
@@ -51,23 +24,54 @@
             <el-radio-button label="card">加密卡检测</el-radio-button>
           </el-radio-group>
         </div>
-        <el-tooltip
-          :disabled="!startDetectBlockedByCert"
-          content="请先完成前置检测并选择签名证书"
-          placement="top"
-        >
-          <span class="config-panel__btn-wrap">
+        <div class="config-panel__action-row">
+          <div v-show="needsSignCertForMode" class="cert-picker-inline">
+            <span class="config-label">签名证书</span>
             <el-button
               type="primary"
-              class="config-panel__btn"
-              :loading="detecting"
-              :disabled="startDetectDisabled"
-              @click="runDetect"
+              plain
+              :loading="certPreChecking"
+              @click="runCertPrereqAndOpenSelect"
             >
-              {{ detecting ? '检查中...' : '开始检查' }}
+              检测CA根证
             </el-button>
-          </span>
-        </el-tooltip>
+            <el-select
+              ref="signCertSelectRef"
+              v-model="selectedSignCertId"
+              :placeholder="signCertSelectPlaceholder"
+              :disabled="!signCertPickerUnlocked"
+              filterable
+              clearable
+              class="cert-picker-select"
+            >
+              <el-option
+                v-for="opt in signCertOptions"
+                :key="opt.value"
+                :label="opt.label"
+                :value="opt.value"
+              />
+            </el-select>
+          </div>
+          <div class="config-panel__action-end">
+            <el-tooltip
+              :disabled="!startDetectBlockedByCert"
+              content="请先点击「检测CA根证」并选择签名证书"
+              placement="top"
+            >
+              <span class="config-panel__btn-wrap">
+                <el-button
+                  type="primary"
+                  class="config-panel__btn"
+                  :loading="detecting"
+                  :disabled="startDetectDisabled"
+                  @click="runDetect"
+                >
+                  {{ detecting ? '检查中...' : '开始检查' }}
+                </el-button>
+              </span>
+            </el-tooltip>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -254,7 +258,7 @@ import {
 const DEMO_SIMULATE_CERT_MISSING = false
 
 /**
- * 原型：模拟「是否已配置 CA 根证 / CRL」。任一为 false 时，点击「选择证书」将阻断且提示补全配置。
+ * 原型：模拟「是否已配置 CA 根证 / CRL」。任一为 false 时，点击「检测CA根证」将阻断且提示补全配置。
  * 联调真实接口时可改为请求结果。
  */
 const DEMO_DETECT_CA_ROOT_READY = ref(true)
@@ -275,7 +279,7 @@ const detectType = ref('all')
 const detecting = ref(false)
 
 const signCertSelectPlaceholder = computed(() =>
-  signCertPickerUnlocked.value ? '请选择签名证书' : '请先点击「选择证书」完成前置检测'
+  signCertPickerUnlocked.value ? '请选择签名证书' : '请先点击「检测CA根证」完成前置检测'
 )
 
 /** 全部检测 / 服务接口检测须选签名证书；加密卡检测不需要 */
@@ -371,10 +375,10 @@ const idleHintText = computed(() => {
   const map = {
     all: selectedSignCertId.value
       ? '请点击「开始检查」执行全部检测。'
-      : '请先完成前置检测并选择签名证书，再点击「开始检查」执行全部检测。',
+      : '请先点击「检测CA根证」并选择签名证书，再点击「开始检查」执行全部检测。',
     service: selectedSignCertId.value
       ? '请点击「开始检查」仅执行服务接口检测。'
-      : '请先完成前置检测并选择签名证书，再点击「开始检查」执行服务接口检测。',
+      : '请先点击「检测CA根证」并选择签名证书，再点击「开始检查」执行服务接口检测。',
     card: '请点击「开始检查」仅执行加密卡检测（无需选择证书）。'
   }
   return map[detectType.value] || map.all
@@ -602,7 +606,7 @@ function exportReport () {
 
 const runDetect = () => {
   if ((detectType.value === 'all' || detectType.value === 'service') && !selectedSignCertId.value) {
-    ElMessage.warning('请先完成前置检测并选择签名证书后再开始检测')
+    ElMessage.warning('请先点击「检测CA根证」并选择签名证书后再开始检测')
     return
   }
 
@@ -712,16 +716,6 @@ const runDetect = () => {
   margin-bottom: 4px;
 }
 
-.cert-picker-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px 16px;
-  padding: 8px 0 12px;
-  margin-bottom: 0;
-  border-bottom: 1px solid $border-light;
-}
-
 .cert-picker-select {
   width: 300px;
   max-width: 100%;
@@ -755,14 +749,12 @@ const runDetect = () => {
   margin-bottom: 8px;
 }
 
-/* 单行 — 左为「检测方式 + 分段」、右为「开始检查」，白底留白 */
+/* 上：检测方式；下：签名证书 + 开始检查同一行 */
 .config-panel {
   display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px 24px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
   padding: 12px 0 20px;
   margin-bottom: 4px;
   background: #fff;
@@ -770,13 +762,35 @@ const runDetect = () => {
   border-radius: 0;
 }
 
-.config-panel__left {
+.config-panel__mode-row {
   display: flex;
-  align-items: center;
   flex-wrap: wrap;
+  align-items: center;
   gap: 12px 16px;
+  padding-bottom: 12px;
+}
+
+.config-panel__action-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+  padding-top: 4px;
+  border-top: 1px solid $border-light;
+}
+
+.cert-picker-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+  flex: 1 1 auto;
   min-width: 0;
-  flex: 1;
+}
+
+.config-panel__action-end {
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .config-label {

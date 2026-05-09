@@ -57,7 +57,7 @@
         <el-menu-item index="/system/admin">管理员管理</el-menu-item>
         <el-menu-item index="/system/permission">权限管理</el-menu-item>
         <el-menu-item index="/system/ntp">NTP时间源管理</el-menu-item>
-        <el-menu-item index="/system/whitelist">白名单配置</el-menu-item>
+        <el-menu-item index="/system/whitelist">白名单配置<el-tag type="danger" effect="dark" size="small" style="margin-left: 6px;">新</el-tag></el-menu-item>
         <el-menu-item index="/system/detect">一键检测<el-tag type="danger" effect="dark" size="small" style="margin-left: 6px;">改</el-tag></el-menu-item>
       </el-sub-menu>
     </el-menu>
