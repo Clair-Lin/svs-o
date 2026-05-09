@@ -50,7 +50,7 @@
     </div>
 
     <div class="action-bar">
-      <el-button type="primary" @click="handleCreate">生成密钥</el-button>
+      <el-button type="primary" @click="handleCreate">生成密钥 <el-tag type="danger" effect="dark" size="small" style="margin-left: 6px;">新</el-tag></el-button>
       <el-button @click="handleRecover">恢复密钥</el-button>
     </div>
 

@@ -16,15 +16,40 @@
             <span class="filter-label">DN</span>
             <el-input
               v-model="filterDn"
-              placeholder="DN模糊查询：忽略空格，可用空格或逗号分隔多关键字"
+              placeholder="可用空格或逗号分隔多关键字"
               clearable
               class="filter-input filter-input--dn"
             />
           </div>
+          <div class="filter-item filter-item--status">
+            <span class="filter-label">状态</span>
+            <el-select v-model="filterStatus" class="filter-status-select" placeholder="全部">
+              <el-option label="全部" value="all" />
+              <el-option label="未知" value="unknown" />
+              <el-option label="正常" value="normal" />
+              <el-option label="已过期" value="expired" />
+              <el-option label="已吊销" value="revoked" />
+              <el-option label="未生效" value="inactive" />
+            </el-select>
+          </div>
+        </div>
+        <div class="filter-row filter-row--second">
           <div class="filter-item filter-item--range">
-            <span class="filter-label">有效期</span>
+            <span class="filter-label">生效时间</span>
             <el-date-picker
-              v-model="filterValidityRange"
+              v-model="filterNotBeforeRange"
+              type="daterange"
+              range-separator="至"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+              value-format="YYYY-MM-DD"
+              class="filter-daterange"
+            />
+          </div>
+          <div class="filter-item filter-item--range">
+            <span class="filter-label">过期时间</span>
+            <el-date-picker
+              v-model="filterNotAfterRange"
               type="daterange"
               range-separator="至"
               start-placeholder="开始日期"
@@ -44,7 +69,7 @@
         <el-button type="primary" @click="openAdd">添加</el-button>
       </div>
 
-      <el-table :data="pagedList" border stripe>
+      <el-table :data="pagedList" border class="ca-cert-table">
         <el-table-column prop="caName" label="CA名称" min-width="140" show-overflow-tooltip />
         <el-table-column prop="description" label="CA描述" min-width="200" show-overflow-tooltip />
         <el-table-column label="CA证书（DN）" min-width="280" show-overflow-tooltip>
@@ -56,6 +81,18 @@
         </el-table-column>
         <el-table-column prop="notBefore" label="生效时间" width="120" align="center" />
         <el-table-column prop="notAfter" label="过期时间" width="120" align="center" />
+        <el-table-column label="状态" width="140" align="left">
+          <template #default="{ row }">
+            <div class="cert-status-cell">
+              <span
+                class="cert-status-dot"
+                :class="'cert-status-dot--' + statusDisplay(row).variant"
+                aria-hidden="true"
+              />
+              <span class="cert-status-text">{{ statusDisplay(row).text }}</span>
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column label="操作" fixed="right" width="300">
           <template #default="{ row }">
             <el-button type="primary" size="small" link @click="stubAction(row, '上传下级证书')">
@@ -145,14 +182,18 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 
 const router = useRouter()
 
-let idSeq = 5
+let idSeq = 7
 
 const filterCaName = ref('')
 const queryCaName = ref('')
 const filterDn = ref('')
 const queryDn = ref('')
-const filterValidityRange = ref(null)
-const queryValidityRange = ref(null)
+const filterStatus = ref('all')
+const queryStatus = ref('all')
+const filterNotBeforeRange = ref(null)
+const queryNotBeforeRange = ref(null)
+const filterNotAfterRange = ref(null)
+const queryNotAfterRange = ref(null)
 
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -165,7 +206,8 @@ const list = ref([
     description: 'CA_TEST',
     certLabel: 'C=CN,ST=GuangDong,O=Olym Tech Ltd,CN=Root CA',
     notBefore: '2023-06-01',
-    notAfter: '2033-05-31'
+    notAfter: '2033-05-31',
+    certState: 'normal'
   },
   {
     id: '2',
@@ -173,7 +215,8 @@ const list = ref([
     description: 'SM2',
     certLabel: 'C=CN,O=GMSSL,OU=PKI/SM2,CN=RootCA for Test',
     notBefore: '2022-01-15',
-    notAfter: '2032-01-14'
+    notAfter: '2032-01-14',
+    certState: 'revoked'
   },
   {
     id: '3',
@@ -181,7 +224,8 @@ const list = ref([
     description: 'RSA',
     certLabel: 'C=CN,O=GMSSL,OU=PKI/RSA,CN=RootCA for Test',
     notBefore: '2022-01-15',
-    notAfter: '2032-01-14'
+    notAfter: '2032-01-14',
+    certState: 'unknown'
   },
   {
     id: '4',
@@ -190,13 +234,67 @@ const list = ref([
     certLabel: 'C=CN,CN=root_ca_20260205165008',
     notBefore: '2026-02-05',
     notAfter: '2036-02-04'
+  },
+  {
+    id: '5',
+    caName: 'DEMO-EXPIRED',
+    description: '演示已过期',
+    certLabel: 'C=CN,O=DEMO,CN=Expired CA',
+    notBefore: '2020-01-01',
+    notAfter: '2025-12-31'
+  },
+  {
+    id: '6',
+    caName: 'DEMO-INACTIVE',
+    description: '演示未生效',
+    certLabel: 'C=CN,O=DEMO,CN=Future CA',
+    notBefore: '2027-01-01',
+    notAfter: '2037-01-01'
   }
 ])
 
 function parseYmd (s) {
   if (!s) return null
-  const t = Date.parse(s)
+  const t = Date.parse(s + (s.length === 10 ? 'T00:00:00' : ''))
   return Number.isNaN(t) ? null : t
+}
+
+function todayYmd () {
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+/**
+ * 行状态：未知、正常、已过期、已吊销、未生效
+ * 显式 certState 优先；否则按日期推导（无有效日期则未知）
+ */
+const STATUS_KEYS = ['unknown', 'normal', 'expired', 'revoked', 'inactive']
+
+function rowCertState (row) {
+  const explicit = row?.certState
+  if (explicit && STATUS_KEYS.includes(explicit)) return explicit
+  const nb = row?.notBefore
+  const na = row?.notAfter
+  if (!nb || !na) return 'unknown'
+  const today = todayYmd()
+  if (today < nb) return 'inactive'
+  if (today > na) return 'expired'
+  return 'normal'
+}
+
+function statusDisplay (row) {
+  const key = rowCertState(row)
+  const map = {
+    unknown: { text: '未知', variant: 'unknown' },
+    normal: { text: '正常', variant: 'normal' },
+    expired: { text: '已过期', variant: 'expired' },
+    revoked: { text: '已吊销', variant: 'revoked' },
+    inactive: { text: '未生效', variant: 'inactive' }
+  }
+  return map[key] || map.unknown
 }
 
 /** 小写并去掉所有空白，便于 DN 与子串模糊比对 */
@@ -221,23 +319,34 @@ function dnFuzzyMatch (certLabel, queryRaw) {
   return tokens.every((t) => hay.includes(t))
 }
 
-/** CA名称、DN（模糊匹配 CA证书 DN 串）、证书有效期与查询条件 */
+/** CA名称、DN、状态、生效/过期独立日期范围（AND） */
 const filteredList = computed(() => {
   const q = queryCaName.value.trim().toLowerCase()
-  const range = queryValidityRange.value
-  const [start, end] = Array.isArray(range) && range.length === 2 ? range : [null, null]
-  const startT = start ? parseYmd(start) : null
-  const endT = end ? parseYmd(end) : null
+  const st = queryStatus.value
+
+  const nbRange = queryNotBeforeRange.value
+  const nbOk = Array.isArray(nbRange) && nbRange.length === 2 && nbRange[0] && nbRange[1]
+  const [nbStart, nbEnd] = nbOk ? nbRange : [null, null]
+
+  const naRange = queryNotAfterRange.value
+  const naOk = Array.isArray(naRange) && naRange.length === 2 && naRange[0] && naRange[1]
+  const [naStart, naEnd] = naOk ? naRange : [null, null]
 
   return list.value.filter((row) => {
     if (q && !row.caName.toLowerCase().includes(q)) return false
     if (!dnFuzzyMatch(row.certLabel, queryDn.value)) return false
-    if (startT != null && endT != null) {
-      const nb = parseYmd(row.notBefore)
-      const na = parseYmd(row.notAfter)
-      if (nb == null || na == null) return false
-      if (!(nb <= endT && na >= startT)) return false
+
+    if (nbOk) {
+      const nb = row.notBefore
+      if (!nb || nb < nbStart || nb > nbEnd) return false
     }
+    if (naOk) {
+      const na = row.notAfter
+      if (!na || na < naStart || na > naEnd) return false
+    }
+
+    if (st !== 'all' && rowCertState(row) !== st) return false
+
     return true
   })
 })
@@ -305,9 +414,9 @@ function resetAddForm () {
 const handleSearch = () => {
   queryCaName.value = filterCaName.value
   queryDn.value = filterDn.value
-  queryValidityRange.value = filterValidityRange.value
-    ? [...filterValidityRange.value]
-    : null
+  queryStatus.value = filterStatus.value
+  queryNotBeforeRange.value = filterNotBeforeRange.value ? [...filterNotBeforeRange.value] : null
+  queryNotAfterRange.value = filterNotAfterRange.value ? [...filterNotAfterRange.value] : null
   currentPage.value = 1
 }
 
@@ -316,8 +425,12 @@ const handleReset = () => {
   queryCaName.value = ''
   filterDn.value = ''
   queryDn.value = ''
-  filterValidityRange.value = null
-  queryValidityRange.value = null
+  filterStatus.value = 'all'
+  queryStatus.value = 'all'
+  filterNotBeforeRange.value = null
+  queryNotBeforeRange.value = null
+  filterNotAfterRange.value = null
+  queryNotAfterRange.value = null
   currentPage.value = 1
 }
 
@@ -414,15 +527,85 @@ const handleDelete = (row) => {
   }
 }
 
+.filter-row--second {
+  margin-top: $spacing-sm;
+}
+
+.filter-item--status {
+  flex: 0 0 auto;
+  align-items: center;
+}
+
+.filter-status-select {
+  width: 150px;
+}
+
 .filter-item--range {
-  flex: 1 1 320px;
-  min-width: 280px;
+  flex: 0 0 auto;
+  align-items: center;
 }
 
 .filter-daterange {
-  flex: 1;
-  min-width: 240px;
-  max-width: 320px;
+  width: 280px;
+}
+
+/* 列表 12px；仅表头浅灰，表体全白 */
+.ca-cert-table {
+  :deep(.el-table__header .cell),
+  :deep(.el-table__body .cell) {
+    font-size: 12px;
+  }
+
+  :deep(.el-table__header th) {
+    background-color: #f5f7fa !important;
+  }
+
+  :deep(.el-table__body tr) {
+    background-color: #fff !important;
+  }
+
+  :deep(.el-table__body tr:hover > td) {
+    background-color: #fff !important;
+  }
+}
+
+.cert-status-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.4;
+}
+
+.cert-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.cert-status-dot--unknown {
+  background-color: #c0c4cc;
+}
+
+.cert-status-dot--normal {
+  background-color: #67c23a;
+}
+
+.cert-status-dot--expired {
+  background-color: #f56c6c;
+}
+
+.cert-status-dot--revoked {
+  background-color: #909399;
+}
+
+.cert-status-dot--inactive {
+  background-color: #409eff;
+}
+
+.cert-status-text {
+  font-size: 12px;
+  color: $text-primary;
 }
 
 .filter-actions {

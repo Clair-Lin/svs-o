@@ -3,10 +3,19 @@
     <KeyManageSecurityModals ref="securityModalsRef" />
     <div class="page-card">
       <el-tabs v-model="activeTab" class="key-manage-page-tabs">
-        <el-tab-pane :label="tabCopy['0029'].tabLabel" name="0029" lazy>
+        <el-tab-pane name="0029" lazy>
+          <template #label>
+            <span class="key-tab-label">签名验签服务器密钥</span>
+          </template>
           <KeyManage0029Panel />
         </el-tab-pane>
-        <el-tab-pane :label="tabCopy['0019'].tabLabel" name="0019" lazy>
+        <el-tab-pane name="0019" lazy>
+          <template #label>
+            <span class="key-tab-label">
+              <span>通用密码服务接口密钥</span>
+              <el-tag type="danger" effect="dark" size="small" class="key-tab-label__tag">新</el-tag>
+            </span>
+          </template>
           <KeyManage0019Panel />
         </el-tab-pane>
       </el-tabs>
@@ -29,16 +38,10 @@ const activeTab = ref('0029')
 const securityModalsRef = ref(null)
 provide(KEY_MANAGE_SECURITY_KEY, securityModalsRef)
 
-/** Tab 与面包屑：标准号 + 规范简称，与密标委公开名称一致 */
+/** 面包屑文案（Tab 标题在 template #label 中维护） */
 const tabCopy = {
-  '0029': {
-    tabLabel: '签名验签服务器密钥',
-    breadcrumb: '签名验签服务器技术规范'
-  },
-  '0019': {
-    tabLabel: '通用密码服务接口密钥',
-    breadcrumb: '通用密码服务接口规范'
-  }
+  '0029': { breadcrumb: '签名验签服务器技术规范' },
+  '0019': { breadcrumb: '通用密码服务接口规范' }
 }
 
 function tabFromRoute () {
@@ -104,5 +107,17 @@ watchEffect(() => {
   :deep(.el-tabs__content) {
     padding-top: 16px;
   }
+}
+
+.key-tab-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1.2;
+}
+
+.key-tab-label__tag {
+  margin-left: 2px;
+  vertical-align: middle;
 }
 </style>
