@@ -10,7 +10,7 @@ const routes = [
   },
   {
     path: '/',
-    redirect: '/dashboard'
+    redirect: '/login'
   },
   // 监控功能：系统状态、资源与业务统计等统一展示（监控总览页）
   {
