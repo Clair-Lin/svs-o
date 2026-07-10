@@ -197,7 +197,7 @@ const list = ref([
     id: '5',
     caName: 'test',
     description: 'ML-DSA根证书',
-    certLabel: 'C=CN,O=GMSSL,OU=PKI/ML-DSA,CN=test',
+    certLabel: 'C=CN,O=GMSSL,CN=test ML-DSA Root CA',
     certType: 'ML-DSA证书'
   }
 ])
@@ -274,7 +274,7 @@ function showSuccess () {
 }
 
 function certLabelByType (certType, caName) {
-  if (certType === 'ML-DSA证书') return `C=CN,O=GMSSL,OU=PKI/ML-DSA,CN=${caName || 'RootCA for Test'}`
+  if (certType === 'ML-DSA证书') return `C=CN,O=GMSSL,CN=${caName || 'RootCA for Test'} ML-DSA Root CA`
   return `C=CN,O=GMSSL,OU=PKI/SM2,CN=${caName || 'RootCA for Test'}`
 }
 
