@@ -11,6 +11,7 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 .vite/
+nginx/logs/
 
 # Editor / OS
 .DS_Store
@@ -23,3 +24,4 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+.cert/

@@ -1,126 +1,40 @@
 <template>
   <div class="ca-cert">
-    <div class="page-card">
-      <div class="ca-search-toolbar">
-        <div class="filter-row">
-          <div class="filter-item">
-            <span class="filter-label">CA名称</span>
-            <el-input
-              v-model="filterCaName"
-              placeholder="请输入CA名称"
-              clearable
-              class="filter-input"
-            />
-          </div>
-          <div class="filter-item">
-            <span class="filter-label">DN</span>
-            <el-input
-              v-model="filterDn"
-              placeholder="可用空格或逗号分隔多关键字"
-              clearable
-              class="filter-input filter-input--dn"
-            />
-          </div>
-          <div class="filter-item filter-item--status">
-            <span class="filter-label">状态</span>
-            <el-select v-model="filterStatus" class="filter-status-select" placeholder="全部">
-              <el-option label="全部" value="all" />
-              <el-option label="未知" value="unknown" />
-              <el-option label="正常" value="normal" />
-              <el-option label="已过期" value="expired" />
-              <el-option label="已吊销" value="revoked" />
-              <el-option label="未生效" value="inactive" />
-            </el-select>
-          </div>
+    <div class="page-card ca-cert-card">
+      <div class="ca-toolbar">
+        <div class="search-row">
+          <label class="search-label">CA名称</label>
+          <el-input
+            v-model="filterCaName"
+            placeholder="请输入CA名称"
+            clearable
+            class="search-input"
+          />
+          <el-button type="primary" class="query-button" @click="handleSearch">查询</el-button>
+          <el-button class="reset-button" @click="handleReset">重置</el-button>
         </div>
-        <div class="filter-row filter-row--second">
-          <div class="filter-item filter-item--datepair">
-            <span class="filter-label">生效开始时间</span>
-            <el-date-picker
-              v-model="filterNotBeforeStart"
-              type="date"
-              placeholder="开始日期"
-              value-format="YYYY-MM-DD"
-              clearable
-              class="filter-date-single"
-            />
-          </div>
-          <div class="filter-item filter-item--datepair">
-            <span class="filter-label">生效结束时间</span>
-            <el-date-picker
-              v-model="filterNotBeforeEnd"
-              type="date"
-              placeholder="结束日期"
-              value-format="YYYY-MM-DD"
-              clearable
-              class="filter-date-single"
-            />
-          </div>
-          <div class="filter-item filter-item--datepair">
-            <span class="filter-label">过期开始时间</span>
-            <el-date-picker
-              v-model="filterNotAfterStart"
-              type="date"
-              placeholder="开始日期"
-              value-format="YYYY-MM-DD"
-              clearable
-              class="filter-date-single"
-            />
-          </div>
-          <div class="filter-item filter-item--datepair">
-            <span class="filter-label">过期结束时间</span>
-            <el-date-picker
-              v-model="filterNotAfterEnd"
-              type="date"
-              placeholder="结束日期"
-              value-format="YYYY-MM-DD"
-              clearable
-              class="filter-date-single"
-            />
-          </div>
-          <div class="filter-item filter-actions">
-            <el-button type="primary" @click="handleSearch">查询</el-button>
-            <el-button @click="handleReset">重置</el-button>
-          </div>
-        </div>
+
+        <el-button type="primary" class="add-button" @click="openAdd">添加</el-button>
       </div>
 
-      <div class="action-bar">
-        <el-button type="primary" @click="openAdd">添加</el-button>
-      </div>
-
-      <el-table :data="pagedList" border class="ca-cert-table">
-        <el-table-column prop="caName" label="CA名称" min-width="140" show-overflow-tooltip />
-        <el-table-column prop="description" label="CA描述" min-width="200" show-overflow-tooltip />
-        <el-table-column label="CA证书（DN）" min-width="280" show-overflow-tooltip>
+      <el-table :data="pagedList" class="ca-cert-table">
+        <el-table-column prop="caName" label="CA名称" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="description" label="CA描述" min-width="260" show-overflow-tooltip />
+        <el-table-column label="CA证书" min-width="420" show-overflow-tooltip>
           <template #default="{ row }">
             <el-button type="primary" link class="dn-link" @click="openDetail(row)">
               {{ row.certLabel }}
             </el-button>
           </template>
         </el-table-column>
-        <el-table-column prop="notBefore" label="生效时间" width="120" align="center" />
-        <el-table-column prop="notAfter" label="过期时间" width="120" align="center" />
-        <el-table-column label="状态" width="140" align="left">
+        <el-table-column label="操作" width="280" align="left">
           <template #default="{ row }">
-            <div class="cert-status-cell">
-              <span
-                class="cert-status-dot"
-                :class="'cert-status-dot--' + statusDisplay(row).variant"
-                aria-hidden="true"
-              />
-              <span class="cert-status-text">{{ statusDisplay(row).text }}</span>
+            <div class="operation-links">
+              <el-button type="primary" link @click="stubAction(row, '上传下级证书')">上传下级证书</el-button>
+              <el-button type="primary" link @click="openCrl(row)">配置CRL</el-button>
+              <el-button type="primary" link @click="openOcsp(row)">配置OCSP</el-button>
+              <el-button type="primary" link @click="handleDelete(row)">删除</el-button>
             </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" fixed="right" width="300">
-          <template #default="{ row }">
-            <el-button type="primary" size="small" link @click="stubAction(row, '上传下级证书')">
-              上传下级证书
-            </el-button>
-            <el-button type="primary" size="small" link @click="stubAction(row, '配置CRL')">配置CRL</el-button>
-            <el-button type="primary" size="small" link @click="stubAction(row, '配置OCSP')">配置OCSP</el-button>
-            <el-button type="danger" size="small" link @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -137,40 +51,40 @@
       </div>
     </div>
 
-    <el-dialog v-model="addVisible" title="添加" width="520px" destroy-on-close @closed="resetAddForm">
-      <el-form ref="addFormRef" :model="addForm" :rules="addRules" label-width="100px">
+    <el-dialog
+      v-model="addVisible"
+      title="添加CA信息"
+      width="640px"
+      destroy-on-close
+      class="ca-form-dialog ca-add-dialog"
+      @closed="resetAddForm"
+    >
+      <el-form ref="addFormRef" :model="addForm" :rules="addRules" label-width="106px" class="ca-dialog-form">
         <el-form-item label="CA名称" prop="caName">
           <el-input v-model="addForm.caName" placeholder="请输入CA名称" clearable />
+          <div class="field-tip">支持中文、英文、特殊字符，长度2-20字符</div>
         </el-form-item>
         <el-form-item label="CA描述" prop="description">
           <el-input
             v-model="addForm.description"
             type="textarea"
-            :rows="3"
+            :rows="4"
             placeholder="请输入CA描述"
             maxlength="500"
-            show-word-limit
           />
         </el-form-item>
-        <el-form-item label="生效时间" prop="notBefore">
-          <el-date-picker
-            v-model="addForm.notBefore"
-            type="date"
-            placeholder="选择生效日期"
-            value-format="YYYY-MM-DD"
-            style="width: 100%"
-          />
+        <el-form-item label="证书类型" prop="certType">
+          <el-select v-model="addForm.certType" placeholder="请选择证书类型">
+            <el-option label="SM2证书" value="SM2证书" />
+            <el-option label="ML-DSA证书" value="ML-DSA证书" />
+          </el-select>
         </el-form-item>
-        <el-form-item label="过期时间" prop="notAfter">
-          <el-date-picker
-            v-model="addForm.notAfter"
-            type="date"
-            placeholder="选择过期日期"
-            value-format="YYYY-MM-DD"
-            style="width: 100%"
-          />
+        <el-form-item label="根证书导入方式" prop="importWay">
+          <el-select v-model="addForm.importWay" placeholder="请选择导入方式">
+            <el-option label="上传证书文件" value="上传证书文件" />
+          </el-select>
         </el-form-item>
-        <el-form-item label="CA证书" prop="certFileName">
+        <el-form-item label="证书文件" prop="certFileName">
           <el-upload
             action="#"
             :auto-upload="false"
@@ -179,19 +93,60 @@
             :on-change="onAddCertChange"
             :on-remove="onAddCertRemove"
           >
-            <el-button type="primary">选择文件</el-button>
-            <template #tip>
-              <div class="upload-tip">支持 CER、CRT、PEM、P7B</div>
-            </template>
+            <el-button type="primary" class="upload-button">点击上传</el-button>
           </el-upload>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="addVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmAdd">确定</el-button>
+        <el-button class="dialog-cancel" @click="addVisible = false">取消</el-button>
+        <el-button type="primary" class="dialog-confirm" @click="confirmAdd">确定</el-button>
       </template>
     </el-dialog>
 
+    <el-dialog
+      v-model="crlVisible"
+      title="配置CRL"
+      width="680px"
+      destroy-on-close
+      class="ca-form-dialog crl-dialog"
+      @closed="resetCrlForm"
+    >
+      <el-form ref="crlFormRef" :model="crlForm" :rules="crlRules" label-width="150px" class="ca-dialog-form crl-form">
+        <el-form-item label="CRL下载方式" prop="downloadMode">
+          <el-radio-group v-model="crlForm.downloadMode">
+            <el-radio value="HTTP配置">HTTP配置</el-radio>
+            <el-radio value="LDAP配置">LDAP配置</el-radio>
+            <el-radio value="上传CRL文件">上传CRL文件</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="HTTP服务器地址" prop="httpServer">
+          <el-input v-model="crlForm.httpServer" placeholder="请输入HTTP服务器地址" clearable />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button class="dialog-cancel" @click="crlVisible = false">取消</el-button>
+        <el-button type="primary" class="dialog-confirm" @click="confirmCrl">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog
+      v-model="ocspVisible"
+      title="配置OCSP"
+      width="640px"
+      destroy-on-close
+      class="ca-form-dialog ocsp-dialog"
+      @closed="resetOcspForm"
+    >
+      <el-form ref="ocspFormRef" :model="ocspForm" :rules="ocspRules" label-width="150px" class="ca-dialog-form ocsp-form">
+        <el-form-item label="OCSP服务器地址" prop="server">
+          <el-input v-model="ocspForm.server" placeholder="请输入OCSP服务器地址" clearable />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button class="dialog-cancel" @click="ocspVisible = false">取消</el-button>
+        <el-button type="primary" class="dialog-confirm" @click="confirmOcsp">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -202,279 +157,148 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 
 const router = useRouter()
 
-let idSeq = 7
+let idSeq = 6
 
 const filterCaName = ref('')
 const queryCaName = ref('')
-const filterDn = ref('')
-const queryDn = ref('')
-const filterStatus = ref('all')
-const queryStatus = ref('all')
-const filterNotBeforeStart = ref('')
-const filterNotBeforeEnd = ref('')
-const filterNotAfterStart = ref('')
-const filterNotAfterEnd = ref('')
-const queryNotBeforeStart = ref('')
-const queryNotBeforeEnd = ref('')
-const queryNotAfterStart = ref('')
-const queryNotAfterEnd = ref('')
-
 const currentPage = ref(1)
 const pageSize = ref(10)
 
-/** 与示意图一致的示例数据（缺省字段已补全） */
 const list = ref([
   {
     id: '1',
     caName: 'CA_TEST',
     description: 'CA_TEST',
     certLabel: 'C=CN,ST=GuangDong,O=Olym Tech Ltd,CN=Root CA',
-    notBefore: '2023-06-01',
-    notAfter: '2033-05-31',
-    certState: 'normal'
+    certType: 'SM2证书'
   },
   {
     id: '2',
     caName: 'SM2-CA',
     description: 'SM2',
     certLabel: 'C=CN,O=GMSSL,OU=PKI/SM2,CN=RootCA for Test',
-    notBefore: '2022-01-15',
-    notAfter: '2032-01-14',
-    certState: 'revoked'
+    certType: 'SM2证书'
   },
   {
     id: '3',
     caName: 'RSA-CA',
     description: 'RSA',
     certLabel: 'C=CN,O=GMSSL,OU=PKI/RSA,CN=RootCA for Test',
-    notBefore: '2022-01-15',
-    notAfter: '2032-01-14',
-    certState: 'unknown'
+    certType: 'SM2证书'
   },
   {
     id: '4',
     caName: 'ML-DSA_CA',
     description: '抗量子密码算法签发的CA根证',
     certLabel: 'C=CN,CN=root_ca_20260205165008',
-    notBefore: '2026-02-05',
-    notAfter: '2036-02-04'
+    certType: 'ML-DSA证书'
   },
   {
     id: '5',
-    caName: 'DEMO-EXPIRED',
-    description: '演示已过期',
-    certLabel: 'C=CN,O=DEMO,CN=Expired CA',
-    notBefore: '2020-01-01',
-    notAfter: '2025-12-31'
-  },
-  {
-    id: '6',
-    caName: 'DEMO-INACTIVE',
-    description: '演示未生效',
-    certLabel: 'C=CN,O=DEMO,CN=Future CA',
-    notBefore: '2027-01-01',
-    notAfter: '2037-01-01'
+    caName: 'test',
+    description: 'ML-DSA根证书',
+    certLabel: 'C=CN,CN=cnl=ML-DSA',
+    certType: 'ML-DSA证书'
   }
 ])
 
-function parseYmd (s) {
-  if (!s) return null
-  const t = Date.parse(s + (s.length === 10 ? 'T00:00:00' : ''))
-  return Number.isNaN(t) ? null : t
-}
-
-function todayYmd () {
-  const d = new Date()
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
-
-/**
- * 行状态：未知、正常、已过期、已吊销、未生效
- * 显式 certState 优先；否则按日期推导（无有效日期则未知）
- */
-const STATUS_KEYS = ['unknown', 'normal', 'expired', 'revoked', 'inactive']
-
-function rowCertState (row) {
-  const explicit = row?.certState
-  if (explicit && STATUS_KEYS.includes(explicit)) return explicit
-  const nb = row?.notBefore
-  const na = row?.notAfter
-  if (!nb || !na) return 'unknown'
-  const today = todayYmd()
-  if (today < nb) return 'inactive'
-  if (today > na) return 'expired'
-  return 'normal'
-}
-
-function statusDisplay (row) {
-  const key = rowCertState(row)
-  const map = {
-    unknown: { text: '未知', variant: 'unknown' },
-    normal: { text: '正常', variant: 'normal' },
-    expired: { text: '已过期', variant: 'expired' },
-    revoked: { text: '已吊销', variant: 'revoked' },
-    inactive: { text: '未生效', variant: 'inactive' }
-  }
-  return map[key] || map.unknown
-}
-
-/** 小写并去掉所有空白，便于 DN 与子串模糊比对 */
-function compactDnForSearch (s) {
-  return String(s || '').toLowerCase().replace(/\s/g, '')
-}
-
-/**
- * DN 模糊查询：不区分大小写；忽略证书 DN 与关键字中的空格/换行；
- * 支持用空格、中英文逗号、顿号分隔多个关键字（需全部在 DN 中出现，顺序不限）。
- */
-function dnFuzzyMatch (certLabel, queryRaw) {
-  const raw = String(queryRaw || '').trim()
-  if (!raw) return true
-  const hay = compactDnForSearch(certLabel)
-  const tokens = raw
-    .toLowerCase()
-    .split(/[\s,，、]+/)
-    .map((t) => t.replace(/\s/g, ''))
-    .filter(Boolean)
-  if (!tokens.length) return true
-  return tokens.every((t) => hay.includes(t))
-}
-
-/** 按查询条件筛一行日期字段：仅开始 / 仅结束 / 两端（颠倒顺序时取闭区间） */
-function rowDateMatchesBound (rowYmd, qStart, qEnd) {
-  const s = (qStart || '').trim()
-  const e = (qEnd || '').trim()
-  if (!s && !e) return true
-  const v = rowYmd
-  if (!v) return false
-  if (s && e) {
-    const lo = s <= e ? s : e
-    const hi = s <= e ? e : s
-    return v >= lo && v <= hi
-  }
-  if (s) return v >= s
-  return v <= e
-}
-
-/** CA名称、DN、状态、生效/过期独立日期边界（AND） */
 const filteredList = computed(() => {
   const q = queryCaName.value.trim().toLowerCase()
-  const st = queryStatus.value
-
-  return list.value.filter((row) => {
-    if (q && !row.caName.toLowerCase().includes(q)) return false
-    if (!dnFuzzyMatch(row.certLabel, queryDn.value)) return false
-
-    if (!rowDateMatchesBound(row.notBefore, queryNotBeforeStart.value, queryNotBeforeEnd.value)) {
-      return false
-    }
-    if (!rowDateMatchesBound(row.notAfter, queryNotAfterStart.value, queryNotAfterEnd.value)) {
-      return false
-    }
-
-    if (st !== 'all' && rowCertState(row) !== st) return false
-
-    return true
-  })
+  if (!q) return list.value
+  return list.value.filter((row) => row.caName.toLowerCase().includes(q))
 })
 
 const pagedList = computed(() => {
-  const all = filteredList.value
-  const size = pageSize.value
-  const page = currentPage.value
-  const start = (page - 1) * size
-  return all.slice(start, start + size)
+  const start = (currentPage.value - 1) * pageSize.value
+  return filteredList.value.slice(start, start + pageSize.value)
 })
 
 watch([filteredList, pageSize], () => {
-  const n = filteredList.value.length
-  const size = pageSize.value || 10
-  const maxPage = Math.max(1, Math.ceil(n / size) || 1)
+  const maxPage = Math.max(1, Math.ceil(filteredList.value.length / pageSize.value) || 1)
   if (currentPage.value > maxPage) currentPage.value = maxPage
 })
 
 const addVisible = ref(false)
 const addFormRef = ref(null)
-
 const addForm = reactive({
   caName: '',
   description: '',
-  notBefore: '',
-  notAfter: '',
+  certType: '',
+  importWay: '上传证书文件',
   certFileName: ''
 })
 
 const addRules = {
-  caName: [{ required: true, message: '请输入CA名称', trigger: 'blur' }],
-  notBefore: [{ required: true, message: '请选择生效时间', trigger: 'change' }],
-  notAfter: [
-    { required: true, message: '请选择过期时间', trigger: 'change' },
-    {
-      validator: (_rule, val, cb) => {
-        if (!val || !addForm.notBefore) {
-          cb()
-          return
-        }
-        const a = parseYmd(addForm.notBefore)
-        const b = parseYmd(val)
-        if (a != null && b != null && b < a) {
-          cb(new Error('过期时间不能早于生效时间'))
-          return
-        }
-        cb()
-      },
-      trigger: 'change'
-    }
+  caName: [
+    { required: true, message: '请输入CA名称', trigger: 'blur' },
+    { min: 2, max: 20, message: '长度2-20字符', trigger: 'blur' }
   ],
-  certFileName: [{ required: true, message: '请选择CA证书文件', trigger: 'change' }]
+  description: [{ required: true, message: '请输入CA描述', trigger: 'blur' }],
+  certType: [{ required: true, message: '请选择证书类型', trigger: 'change' }],
+  importWay: [{ required: true, message: '请选择根证书导入方式', trigger: 'change' }],
+  certFileName: [{ required: true, message: '请上传证书文件', trigger: 'change' }]
+}
+
+const crlVisible = ref(false)
+const crlFormRef = ref(null)
+const currentCrlRow = ref(null)
+const crlForm = reactive({
+  downloadMode: 'HTTP配置',
+  httpServer: ''
+})
+
+const crlRules = {
+  downloadMode: [{ required: true, message: '请选择CRL下载方式', trigger: 'change' }],
+  httpServer: [{ required: true, message: '请输入HTTP服务器地址', trigger: 'blur' }]
+}
+
+const ocspVisible = ref(false)
+const ocspFormRef = ref(null)
+const currentOcspRow = ref(null)
+const ocspForm = reactive({
+  server: ''
+})
+
+const ocspRules = {
+  server: [{ required: true, message: '请输入OCSP服务器地址', trigger: 'blur' }]
+}
+
+function showSuccess () {
+  ElMessage({
+    message: '操作成功',
+    type: 'success',
+    customClass: 'ca-success-message',
+    offset: 20,
+    duration: 2200
+  })
+}
+
+function certLabelByType (certType, caName) {
+  if (certType === 'ML-DSA证书') return 'C=CN,CN=cnl=ML-DSA'
+  return `C=CN,O=GMSSL,OU=PKI/SM2,CN=${caName || 'RootCA for Test'}`
 }
 
 function resetAddForm () {
   addForm.caName = ''
   addForm.description = ''
-  addForm.notBefore = ''
-  addForm.notAfter = ''
+  addForm.certType = ''
+  addForm.importWay = '上传证书文件'
   addForm.certFileName = ''
   addFormRef.value?.resetFields()
 }
 
-const handleSearch = () => {
+function handleSearch () {
   queryCaName.value = filterCaName.value
-  queryDn.value = filterDn.value
-  queryStatus.value = filterStatus.value
-  queryNotBeforeStart.value = filterNotBeforeStart.value || ''
-  queryNotBeforeEnd.value = filterNotBeforeEnd.value || ''
-  queryNotAfterStart.value = filterNotAfterStart.value || ''
-  queryNotAfterEnd.value = filterNotAfterEnd.value || ''
   currentPage.value = 1
 }
 
-const handleReset = () => {
+function handleReset () {
   filterCaName.value = ''
   queryCaName.value = ''
-  filterDn.value = ''
-  queryDn.value = ''
-  filterStatus.value = 'all'
-  queryStatus.value = 'all'
-  filterNotBeforeStart.value = ''
-  filterNotBeforeEnd.value = ''
-  filterNotAfterStart.value = ''
-  filterNotAfterEnd.value = ''
-  queryNotBeforeStart.value = ''
-  queryNotBeforeEnd.value = ''
-  queryNotAfterStart.value = ''
-  queryNotAfterEnd.value = ''
   currentPage.value = 1
 }
 
-const stubAction = (row, title) => {
-  ElMessage.info(`${title}（原型演示）：${row.caName}`)
-}
-
-const openAdd = () => {
+function openAdd () {
   resetAddForm()
   addVisible.value = true
 }
@@ -494,19 +318,66 @@ async function confirmAdd () {
   } catch {
     return
   }
+
   list.value.push({
     id: String(idSeq++),
     caName: addForm.caName.trim(),
     description: addForm.description.trim(),
-    certLabel: addForm.certFileName,
-    notBefore: addForm.notBefore,
-    notAfter: addForm.notAfter
+    certLabel: certLabelByType(addForm.certType, addForm.caName.trim()),
+    certType: addForm.certType
   })
   addVisible.value = false
-  ElMessage.success('添加成功（原型演示）')
+  currentPage.value = Math.max(1, Math.ceil(filteredList.value.length / pageSize.value) || 1)
+  showSuccess()
 }
 
-const openDetail = (row) => {
+function openCrl (row) {
+  currentCrlRow.value = row
+  crlForm.downloadMode = 'HTTP配置'
+  crlForm.httpServer = ''
+  crlVisible.value = true
+}
+
+function resetCrlForm () {
+  currentCrlRow.value = null
+  crlForm.downloadMode = 'HTTP配置'
+  crlForm.httpServer = ''
+  crlFormRef.value?.resetFields()
+}
+
+async function confirmCrl () {
+  try {
+    await crlFormRef.value?.validate()
+  } catch {
+    return
+  }
+  crlVisible.value = false
+  showSuccess()
+}
+
+function openOcsp (row) {
+  currentOcspRow.value = row
+  ocspForm.server = ''
+  ocspVisible.value = true
+}
+
+function resetOcspForm () {
+  currentOcspRow.value = null
+  ocspForm.server = ''
+  ocspFormRef.value?.resetFields()
+}
+
+async function confirmOcsp () {
+  try {
+    await ocspFormRef.value?.validate()
+  } catch {
+    return
+  }
+  ocspVisible.value = false
+  showSuccess()
+}
+
+function openDetail (row) {
   router.push({
     name: 'CACertChain',
     params: { id: row.id },
@@ -514,11 +385,15 @@ const openDetail = (row) => {
   })
 }
 
-const handleDelete = (row) => {
-  ElMessageBox.confirm(`确定删除「${row.caName}」？`, '提示', { type: 'warning' })
+function stubAction (row, title) {
+  ElMessage.info(`${title}（原型演示）：${row.caName}`)
+}
+
+function handleDelete (row) {
+  ElMessageBox.confirm(`确定删除“${row.caName}”？`, '提示', { type: 'warning' })
     .then(() => {
-      list.value = list.value.filter((r) => r.id !== row.id)
-      ElMessage.success('已删除')
+      list.value = list.value.filter((item) => item.id !== row.id)
+      showSuccess()
     })
     .catch(() => {})
 }
@@ -527,155 +402,370 @@ const handleDelete = (row) => {
 <style lang="scss" scoped>
 @import '@/styles/variables.scss';
 
-.ca-search-toolbar {
-  background: $card-bg;
-  padding: $spacing-md;
-  margin-bottom: $spacing-sm;
+.ca-cert {
+  min-height: 100%;
 }
 
-.filter-row {
+.ca-cert-card {
+  min-height: calc(100vh - #{$header-height} - 20px);
+  padding: 0;
+  border-radius: 0;
+  box-shadow: 0 1px 5px rgba(24, 47, 77, 0.12);
+}
+
+.ca-toolbar {
+  padding: 16px 16px 14px;
+  background: #fff;
+}
+
+.search-row {
   display: flex;
-  flex-wrap: wrap;
-  gap: $spacing-md $spacing-lg;
   align-items: center;
+  gap: 10px;
 }
 
-.filter-item {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: $spacing-xs;
-}
-
-.filter-label {
-  flex-shrink: 0;
-  font-size: $font-size-base;
-  color: $text-secondary;
+.search-label {
+  color: #1f2d3d;
+  font-size: 12px;
+  line-height: 30px;
   white-space: nowrap;
 }
 
-.filter-input {
-  width: 280px;
+.search-input {
+  width: 180px;
 
-  &--dn {
-    width: 360px;
-    max-width: 100%;
+  :deep(.el-input__wrapper) {
+    border-radius: 0;
+    box-shadow: 0 0 0 1px #d8dee8 inset;
+  }
+
+  :deep(.el-input__inner) {
+    height: 30px;
+    font-size: 12px;
   }
 }
 
-.filter-row--second {
-  margin-top: $spacing-sm;
+.query-button,
+.reset-button,
+.add-button {
+  min-width: 70px;
+  height: 30px;
+  border-radius: 0;
+  font-size: 12px;
 }
 
-.filter-item--status {
-  flex: 0 0 auto;
-  align-items: center;
+.query-button,
+.add-button {
+  background: #387ee8;
+  border-color: #387ee8;
 }
 
-.filter-status-select {
-  width: 150px;
+.reset-button {
+  margin-left: 0;
+  color: #3b4b5f;
+  border-color: #d8dee8;
 }
 
-.filter-item--datepair {
-  flex: 0 0 auto;
-  align-items: center;
+.add-button {
+  display: block;
+  margin-top: 15px;
 }
 
-.filter-date-single {
-  width: 160px;
-}
-
-/* 列表 12px；仅表头浅灰，表体全白 */
 .ca-cert-table {
-  :deep(.el-table__header .cell),
-  :deep(.el-table__body .cell) {
-    font-size: 12px;
+  width: 100%;
+
+  :deep(.el-table__cell) {
+    padding: 0;
+    border-bottom-color: #e8edf4;
   }
 
   :deep(.el-table__header th) {
-    background-color: #f5f7fa !important;
+    height: 40px;
+    background-color: #f2f2f2 !important;
+    color: #333;
+    font-weight: 400;
   }
 
-  :deep(.el-table__body tr) {
-    background-color: #fff !important;
+  :deep(.el-table__header .cell),
+  :deep(.el-table__body .cell) {
+    padding: 0 12px;
+    font-size: 12px;
+    line-height: 40px;
+  }
+
+  :deep(.el-table__row) {
+    height: 41px;
   }
 
   :deep(.el-table__body tr:hover > td) {
     background-color: #fff !important;
   }
+
+  :deep(.el-table__inner-wrapper::before) {
+    background-color: #e8edf4;
+  }
 }
 
-.cert-status-cell {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  line-height: 1.4;
-}
-
-.cert-status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.cert-status-dot--unknown {
-  background-color: #c0c4cc;
-}
-
-.cert-status-dot--normal {
-  background-color: #67c23a;
-}
-
-.cert-status-dot--expired {
-  background-color: #f56c6c;
-}
-
-.cert-status-dot--revoked {
-  background-color: #909399;
-}
-
-.cert-status-dot--inactive {
-  background-color: #409eff;
-}
-
-.cert-status-text {
+.dn-link {
+  height: auto;
+  padding: 0;
+  color: #387ee8;
   font-size: 12px;
-  color: $text-primary;
+  font-weight: 400;
+  line-height: 40px;
+  text-align: left;
 }
 
-.filter-actions {
+.operation-links {
   display: flex;
-  flex-wrap: nowrap;
   align-items: center;
-  gap: $spacing-xs;
-}
+  justify-content: flex-start;
+  gap: 14px;
+  white-space: nowrap;
 
-.action-bar {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
-}
+  :deep(.el-button) {
+    height: auto;
+    margin-left: 0;
+    padding: 0;
+    color: #387ee8;
+    font-size: 12px;
+    font-weight: 400;
+  }
 
-.upload-tip {
-  margin-top: 8px;
-  font-size: 12px;
-  color: $text-secondary;
+  :deep(.el-button:focus),
+  :deep(.el-button:focus-visible) {
+    outline: none;
+    box-shadow: none;
+  }
 }
 
 .table-pagination {
   display: flex;
   justify-content: flex-end;
-  margin-top: 16px;
-  padding: 4px 0;
+  padding: 14px 18px 0;
 }
 
-.dn-link {
+.ca-dialog-form {
+  padding: 16px 0 10px 62px;
+
+  :deep(.el-form-item) {
+    margin-bottom: 15px;
+  }
+
+  :deep(.el-form-item__label) {
+    color: #1f2d3d;
+    font-size: 12px;
+    line-height: 30px;
+    padding-right: 10px;
+  }
+
+  :deep(.el-form-item__content) {
+    line-height: 30px;
+  }
+
+  :deep(.el-input),
+  :deep(.el-select) {
+    width: 290px;
+  }
+
+  :deep(.el-input__wrapper),
+  :deep(.el-select__wrapper) {
+    min-height: 30px;
+    height: 30px;
+    border-radius: 0;
+    box-shadow: 0 0 0 1px #d8dee8 inset;
+  }
+
+  :deep(.el-input__inner),
+  :deep(.el-select__placeholder),
+  :deep(.el-select__selected-item) {
+    font-size: 12px;
+  }
+
+  :deep(.el-textarea__inner) {
+    width: 290px;
+    min-height: 84px !important;
+    border-radius: 0;
+    font-size: 12px;
+    line-height: 20px;
+    padding: 7px 11px;
+    box-shadow: 0 0 0 1px #d8dee8 inset;
+  }
+
+  :deep(.el-form-item.is-required:not(.is-no-asterisk).asterisk-left > .el-form-item__label::before) {
+    color: #d40000;
+    margin-right: 3px;
+  }
+
+  :deep(.el-upload-list) {
+    margin: 0;
+  }
+}
+
+.field-tip {
+  width: 290px;
+  margin-top: 2px;
+  color: #7a8494;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.upload-button {
+  min-width: 94px;
+  height: 30px;
+  padding: 0 20px;
+  border-radius: 0;
+  background: #387ee8;
+  border-color: #387ee8;
+  font-size: 12px;
+}
+
+.crl-form {
+  padding: 21px 0 0 20px;
+
+  :deep(.el-form-item) {
+    margin-bottom: 20px;
+  }
+
+  :deep(.el-radio-group) {
+    height: 30px;
+    align-items: center;
+    gap: 34px;
+  }
+
+  :deep(.el-radio) {
+    height: 30px;
+    margin-right: 0;
+    color: #1f2d3d;
+    font-size: 12px;
+  }
+
+  :deep(.el-radio__label) {
+    padding-left: 10px;
+    font-size: 12px;
+  }
+
+  :deep(.el-input) {
+    width: 330px;
+  }
+}
+
+.ocsp-form {
+  padding: 18px 0 0 20px;
+
+  :deep(.el-form-item) {
+    margin-bottom: 16px;
+  }
+
+  :deep(.el-input) {
+    width: 290px;
+  }
+}
+
+:global(.ca-form-dialog.el-dialog) {
   padding: 0;
-  height: auto;
+  border-radius: 0;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+}
+
+:global(.ca-add-dialog.el-dialog) {
+  margin-top: 10vh !important;
+  height: 433px;
+}
+
+:global(.crl-dialog.el-dialog) {
+  margin-top: 14vh !important;
+  height: 226px;
+}
+
+:global(.ocsp-dialog.el-dialog) {
+  margin-top: 14vh !important;
+  height: 181px;
+}
+
+:global(.ca-form-dialog .el-dialog__header) {
+  height: 39px;
+  display: flex;
+  align-items: center;
+  padding: 0 18px;
+  margin-right: 0;
+  background: #dce1e7;
+}
+
+:global(.ca-form-dialog .el-dialog__title) {
+  color: #111;
+  font-size: 16px;
   font-weight: 400;
-  text-align: left;
-  white-space: normal;
-  line-height: 1.5;
+  line-height: 39px;
+}
+
+:global(.ca-form-dialog .el-dialog__headerbtn) {
+  top: 0;
+  right: 6px;
+  width: 39px;
+  height: 39px;
+}
+
+:global(.ca-form-dialog .el-dialog__headerbtn .el-dialog__close) {
+  color: #1f2d3d;
+  font-size: 18px;
+}
+
+:global(.ca-form-dialog .el-dialog__body) {
+  padding: 0;
+}
+
+:global(.ca-add-dialog .el-dialog__body) {
+  height: 337px;
+}
+
+:global(.crl-dialog .el-dialog__body) {
+  height: 129px;
+}
+
+:global(.ocsp-dialog .el-dialog__body) {
+  height: 84px;
+}
+
+:global(.ca-form-dialog .el-dialog__footer) {
+  height: 57px;
+  padding: 14px 25px 0;
+  border-top: 1px solid #e7ebf1;
+}
+
+.dialog-cancel,
+.dialog-confirm {
+  width: 70px;
+  height: 28px;
+  min-width: 70px;
+  padding: 0;
+  border-radius: 0;
+  font-size: 12px;
+}
+
+.dialog-cancel {
+  margin-right: 10px;
+  color: #1f2d3d;
+  border-color: #d8dee8;
+}
+
+.dialog-confirm {
+  background: #387ee8;
+  border-color: #387ee8;
+}
+
+:global(.ca-success-message) {
+  top: 20px !important;
+  left: 50% !important;
+  min-width: 380px;
+  height: 48px;
+  justify-content: flex-start;
+  padding: 0 20px;
+  border-color: #d8efcf;
+  border-radius: 3px;
+  background: #f0faeb;
+  color: #67c23a;
+  font-size: 14px;
+  transform: translateX(-50%);
 }
 </style>

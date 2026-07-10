@@ -1,54 +1,73 @@
 <template>
-  <div class="sidebar" :class="{ collapsed }">
-    <!-- Logo -->
+  <aside class="sidebar" :class="{ collapsed }">
     <div class="sidebar-logo">
-      <div class="logo-icon">
-        <el-icon :size="24"><Key /></el-icon>
+      <div class="brand-mark" aria-hidden="true">
+        <span class="mark-stroke mark-blue"></span>
+        <span class="mark-stroke mark-cyan"></span>
+        <span class="mark-stroke mark-green"></span>
       </div>
-      <span v-show="!collapsed" class="logo-text">SVS</span>
+      <div v-show="!collapsed" class="brand-copy">
+        <div class="logo-text">签名验签服务器</div>
+        <div class="version-text">系统版本：1.0</div>
+      </div>
     </div>
 
-    <!-- 菜单 -->
     <el-menu
       :default-active="activeMenu"
-      :default-openeds="['sign-service', 'system']"
       :collapse="collapsed"
       :collapse-transition="false"
-      background-color="#001529"
-      text-color="#ffffff"
-      active-text-color="#ffffff"
       router
+      class="sidebar-menu"
     >
-      <!-- 监控功能 -->
       <el-menu-item index="/dashboard">
-        <el-icon><Monitor /></el-icon>
-        <template #title>设备资源<el-tag type="danger" effect="dark" size="small" style="margin-left: 6px;">新</el-tag></template>
+        <span class="menu-icon" aria-hidden="true">
+          <svg viewBox="0 0 20 20" focusable="false">
+            <path d="M3.5 6.3 10 3.4l6.5 2.9L10 9.2 3.5 6.3Z" />
+            <path d="m3.5 10 6.5 3 6.5-3" />
+            <path d="m3.5 13.7 6.5 3 6.5-3" />
+          </svg>
+        </span>
+        <template #title>设备资源</template>
       </el-menu-item>
 
-      <!-- 应用管理 -->
       <el-menu-item index="/application">
-        <el-icon><Grid /></el-icon>
+        <span class="menu-icon" aria-hidden="true">
+          <svg viewBox="0 0 20 20" focusable="false">
+            <path d="M4.2 8.6h11.6v7.9H4.2z" />
+            <path d="M6.4 8.6V7a3.6 3.6 0 0 1 7.2 0v1.6" />
+            <path d="M10 12.1v1.3" />
+          </svg>
+        </span>
         <template #title>应用管理</template>
       </el-menu-item>
 
-      <!-- 签名验签服务 -->
       <el-sub-menu index="sign-service">
         <template #title>
-          <el-icon><Edit /></el-icon>
+          <span class="menu-icon" aria-hidden="true">
+            <svg viewBox="0 0 20 20" focusable="false">
+              <path d="M4.2 4h6.4M4.2 10h6.4M4.2 16h6.4" />
+              <path d="M4.2 4v12" />
+              <path d="M15.2 3.8h.1M15.2 9.8h.1M15.2 15.8h.1" />
+            </svg>
+          </span>
           <span>签名验签服务</span>
         </template>
-        <el-menu-item index="/key/manage">
-          <template #title>密钥管理<el-tag type="danger" effect="dark" size="small" style="margin-left: 6px;">新</el-tag></template>
-        </el-menu-item>
-        <el-menu-item index="/cert/manage">证书管理 <el-tag type="danger" effect="dark" size="small" style="margin-left: 6px;">新</el-tag></el-menu-item>
+        <el-menu-item index="/key/manage">密钥管理</el-menu-item>
+        <el-menu-item index="/cert/manage">证书管理</el-menu-item>
         <el-menu-item index="/cert/user">用户证书管理</el-menu-item>
-        <el-menu-item index="/cert/ca">CA根证管理<el-tag type="danger" effect="dark" size="small" style="margin-left: 6px;">改</el-tag></el-menu-item>
+        <el-menu-item index="/cert/ca">CA根证管理</el-menu-item>
       </el-sub-menu>
 
-      <!-- 系统管理 -->
       <el-sub-menu index="system">
         <template #title>
-          <el-icon><Tools /></el-icon>
+          <span class="menu-icon" aria-hidden="true">
+            <svg viewBox="0 0 20 20" focusable="false" class="system-menu-svg">
+              <path d="M3.8 4.8h8.3v7.1H3.8z" />
+              <rect class="system-icon-mask" x="5.6" y="6.4" width="9.7" height="8.5" />
+              <path d="M6.4 7.2h8.1v6.9H6.4z" />
+              <path d="M13.7 12.4a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z" />
+            </svg>
+          </span>
           <span>系统管理</span>
         </template>
         <el-menu-item index="/system/info">系统信息</el-menu-item>
@@ -57,28 +76,26 @@
         <el-menu-item index="/system/admin">管理员管理</el-menu-item>
         <el-menu-item index="/system/permission">权限管理</el-menu-item>
         <el-menu-item index="/system/ntp">NTP时间源管理</el-menu-item>
-        <el-menu-item index="/system/whitelist">白名单配置<el-tag type="danger" effect="dark" size="small" style="margin-left: 6px;">新</el-tag></el-menu-item>
-        <el-menu-item index="/system/detect">一键检测<el-tag type="danger" effect="dark" size="small" style="margin-left: 6px;">改</el-tag></el-menu-item>
+        <el-menu-item index="/system/whitelist">白名单配置</el-menu-item>
+        <el-menu-item index="/system/detect">一键检测</el-menu-item>
       </el-sub-menu>
     </el-menu>
-  </div>
+  </aside>
 </template>
 
 <script setup>
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import {
-  Key, Monitor, Grid, Edit, Tools
-} from '@element-plus/icons-vue'
 
 defineProps({
   collapsed: Boolean
 })
 
 const route = useRoute()
-const activeMenu = computed(() =>
-  route.path.startsWith('/key/manage') ? '/key/manage' : route.path
-)
+const activeMenu = computed(() => {
+  if (route.path === '/dashboard') return ''
+  return route.path.startsWith('/key/manage') ? '/key/manage' : route.path
+})
 </script>
 
 <style lang="scss" scoped>
@@ -88,92 +105,211 @@ const activeMenu = computed(() =>
   width: $sidebar-width;
   height: 100vh;
   background: $sidebar-bg;
-  transition: width $transition-duration;
+  box-shadow: 4px 0 10px rgba(16, 35, 60, 0.18);
   overflow: hidden;
+  transition: width $transition-duration;
 
   &.collapsed {
     width: $sidebar-collapsed-width;
 
     .sidebar-logo {
-      padding: 0 20px;
+      justify-content: center;
+      padding: 0;
+    }
+
+    .brand-mark {
+      transform: scale(0.9);
     }
   }
 }
 
 .sidebar-logo {
-  height: $header-height;
+  height: 82px;
   display: flex;
   align-items: center;
-  padding: 0 16px;
-  background: rgba(255, 255, 255, 0.05);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  gap: 12px;
+  padding: 0 14px;
 }
 
-.logo-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #1890ff, #36cfc9);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  flex-shrink: 0;
+.brand-mark {
+  position: relative;
+  width: 46px;
+  height: 30px;
+  flex: 0 0 46px;
+}
+
+.mark-stroke {
+  position: absolute;
+  bottom: 5px;
+  width: 11px;
+  height: 34px;
+  border-radius: 999px;
+  transform: rotate(45deg);
+  box-shadow: 0 5px 12px rgba(37, 123, 255, 0.2);
+}
+
+.mark-blue {
+  left: 5px;
+  background: linear-gradient(180deg, #8d50ff 0%, #2d75ff 100%);
+}
+
+.mark-cyan {
+  left: 20px;
+  background: linear-gradient(180deg, #27b7ff 0%, #39e4ff 100%);
+}
+
+.mark-green {
+  left: 35px;
+  height: 23px;
+  background: linear-gradient(180deg, #53e6a6 0%, #4bd2d5 100%);
+}
+
+.brand-copy {
+  min-width: 0;
+  color: #FFFFFFA6;
 }
 
 .logo-text {
-  margin-left: 10px;
-  font-size: 18px;
-  font-weight: bold;
-  color: #fff;
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 500;
+  letter-spacing: 0;
   white-space: nowrap;
 }
 
-:deep(.el-menu) {
-  border-right: none;
+.version-text {
+  margin-top: 14px;
+  padding-left: 1px;
+  font-size: 12px;
+  line-height: 16px;
+  color: #FFFFFFA6;
+  white-space: nowrap;
+}
 
-  .el-menu-item {
-    height: 40px;
-    line-height: 40px;
+:deep(.sidebar-menu) {
+  --el-menu-bg-color: #162842;
+  --el-menu-text-color: #FFFFFFA6;
+  --el-menu-active-color: #ffffff;
+  --el-menu-hover-bg-color: rgba(111, 163, 230, 0.12);
+  border-right: 0;
+  background: transparent;
 
-    &:hover {
-      background-color: rgba(255, 255, 255, 0.08) !important;
+  .el-menu-item,
+  .el-sub-menu__title {
+    height: 42px;
+    line-height: 42px;
+    padding: 0 18px !important;
+    color: #FFFFFFA6;
+    font-size: 14px;
+    letter-spacing: 0;
+
+    .menu-icon {
+      width: 18px;
+      height: 18px;
+      margin-right: 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #FFFFFFA6;
+      flex: 0 0 18px;
     }
 
-    &.is-active {
-      background-color: $primary-color !important;
+    .menu-icon svg {
+      width: 18px;
+      height: 18px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.9;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .menu-icon .system-menu-svg {
+      stroke-width: 1.65;
+    }
+
+    .menu-icon .system-menu-svg .system-icon-mask {
+      fill: #162842;
+      stroke: none;
+    }
+
+    .menu-icon .system-menu-svg path:last-child {
+      fill: #162842;
+      stroke-width: 1.65;
+    }
+
+    &:hover {
+      color: #fff;
+      background: rgba(111, 163, 230, 0.12) !important;
+
+      .menu-icon {
+        color: #d7ecff;
+      }
+
+      .menu-icon .system-menu-svg .system-icon-mask,
+      .menu-icon .system-menu-svg path:last-child {
+        fill: #223955;
+      }
     }
   }
 
-  .el-sub-menu {
-    .el-sub-menu__title {
-      height: 40px;
-      line-height: 40px;
-      color: #fff;
+  .el-menu-item.is-active {
+    color: #FFFFFF;
+    background: #387ee8 !important;
 
-      .el-icon {
-        color: #fff;
-      }
-
-      &:hover {
-        background-color: rgba(255, 255, 255, 0.08) !important;
-      }
+    .menu-icon {
+      color: #FFFFFF;
     }
 
-    .el-menu-item {
-      height: 32px;
-      line-height: 32px;
-      padding-left: 50px !important;
-      background: #000c17 !important;
+    .menu-icon .system-menu-svg .system-icon-mask,
+    .menu-icon .system-menu-svg path:last-child {
+      fill: #387ee8;
+    }
+  }
 
-      &:hover {
-        background: rgba(255, 255, 255, 0.08) !important;
-      }
+  .el-sub-menu.is-active > .el-sub-menu__title {
+    color: #FFFFFF;
+    background: transparent !important;
 
-      &.is-active {
-        background: $primary-color !important;
+    .menu-icon {
+      color: #FFFFFF;
+    }
+
+    .menu-icon .system-menu-svg .system-icon-mask,
+    .menu-icon .system-menu-svg path:last-child {
+      fill: #162842;
+    }
+
+    &:hover {
+      background: rgba(111, 163, 230, 0.12) !important;
+
+      .menu-icon .system-menu-svg .system-icon-mask,
+      .menu-icon .system-menu-svg path:last-child {
+        fill: #223955;
       }
     }
+  }
+
+  .el-sub-menu .el-menu {
+    background: #162842;
+  }
+
+  .el-sub-menu .el-menu-item {
+    height: 36px;
+    line-height: 36px;
+    padding-left: 48px !important;
+    background: transparent !important;
+    font-size: 13px;
+  }
+
+  .el-sub-menu .el-menu-item.is-active {
+    color: #FFFFFF;
+    background: #387ee8 !important;
+  }
+
+  .el-sub-menu__icon-arrow {
+    right: 18px;
+    color: #86a9cc;
   }
 }
 </style>

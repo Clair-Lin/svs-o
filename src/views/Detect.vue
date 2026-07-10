@@ -97,7 +97,7 @@
 
       <div class="detail-panel">
         <div class="target-bar">
-          <span>检测对象: 本机 127.0.0.1</span>
+          <span>检测对象: 本机 {{ DISPLAY_ORIGIN }}</span>
           <span class="target-count">{{ summary.success }} / {{ summary.total }} 正常</span>
         </div>
 
@@ -129,7 +129,7 @@
               <div class="row-content">
                 <div class="row-title">{{ item.name }}</div>
                 <div v-for="line in item.lines" :key="line" class="row-line">
-                  {{ line }}
+                  {{ formatDisplayLine(line) }}
                 </div>
               </div>
               <div class="row-status" :class="`row-status--${item.type}`">{{ item.status }}</div>
@@ -159,6 +159,7 @@ const selectedCert = ref('cert-ca')
 const detecting = ref(false)
 const progress = ref(100)
 const progressStatus = ref('检测完成')
+const DISPLAY_ORIGIN = 'https://192.168.18.12:8443'
 
 const certificateOptions = [
   {
@@ -282,6 +283,14 @@ const overallClass = computed(() => ({
 
 function toggleGroup(key) {
   expandedGroups[key] = !expandedGroups[key]
+}
+
+function formatDisplayLine(line) {
+  const apiPrefix = '接口地址：'
+  if (!line.startsWith(apiPrefix)) return line
+
+  const path = line.slice(apiPrefix.length)
+  return `${apiPrefix}${DISPLAY_ORIGIN}${path.startsWith('/') ? path : `/${path}`}`
 }
 
 function runDetect() {

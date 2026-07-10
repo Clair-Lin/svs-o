@@ -1,15 +1,15 @@
 // 设计规范变量
 // 颜色方案
-$primary-color:rgb(40, 122, 199);
+$primary-color: #2f7bff;
 $success-color: #52c41a;
 $warning-color: #faad14;
 $danger-color: #ff4d4f;
 $info-color:rgb(19, 110, 196);
 
 // 背景色
-$sidebar-bg: #001529;
+$sidebar-bg: #162842;
 $header-bg: #ffffff;
-$content-bg: #f0f2f5;
+$content-bg: #eef2f7;
 $card-bg: #ffffff;
 
 // 文字色
@@ -25,7 +25,7 @@ $border-light: #f0f0f0;
 // 尺寸规范
 $sidebar-width: 200px;
 $sidebar-collapsed-width: 64px;
-$header-height: 50px;
+$header-height: 44px;
 
 // 圆角
 $border-radius: 2px;

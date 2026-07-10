@@ -3,6 +3,12 @@ import { applyBreadcrumbFromRoute } from '@/composables/pageBreadcrumb'
 
 const routes = [
   {
+    path: '/login',
+    name: 'Login',
+    component: () => import('@/views/Login.vue'),
+    meta: { standalone: true }
+  },
+  {
     path: '/',
     redirect: '/dashboard'
   },

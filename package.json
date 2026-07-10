@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "proxy:https": "node scripts/https-reverse-proxy.cjs",
     "build": "vite build",
     "preview": "vite preview"
   },
