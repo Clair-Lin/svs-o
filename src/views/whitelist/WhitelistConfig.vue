@@ -1,98 +1,67 @@
 <template>
-  <div class="whitelist-config">
-    <div class="page-card">
-      <div class="card-title">白名单配置</div>
+  <div class="whitelist-page">
+    <h1 class="page-title">白名单配置</h1>
 
+    <section class="whitelist-panel">
       <div class="toolbar">
-        <el-button type="primary" @click="handleOpenAdd">
-          新增
-        </el-button>
-        <el-button
-          :disabled="!selectedRows.length"
-          @click="batchDelete"
-        >
-          删除
+        <el-button type="primary" class="primary-button" @click="openAdd">新增</el-button>
+        <el-button class="batch-button" :disabled="!selectedRows.length" @click="batchDelete">
+          批量删除
         </el-button>
       </div>
 
       <el-table
         ref="tableRef"
-        :data="paginatedList"
-        border
-        stripe
+        :data="ipList"
+        class="whitelist-table"
         row-key="id"
         @selection-change="onSelectionChange"
       >
-        <el-table-column type="selection" width="48" reserve-selection />
-        <el-table-column label="IP白名单" min-width="280">
+        <el-table-column type="selection" width="68" />
+        <el-table-column prop="segment" label="IP白名单" min-width="400" />
+        <el-table-column label="操作" width="180" align="left">
           <template #default="{ row }">
-            {{ row.segment }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="100" fixed="right">
-          <template #default="{ row }">
-            <el-button type="danger" size="small" link @click="confirmDelete(row)">
+            <el-button type="primary" link class="delete-link" @click="deleteRow(row)">
               删除
             </el-button>
           </template>
         </el-table-column>
       </el-table>
-
-      <div class="pagination">
-        <el-pagination
-          v-model:current-page="page"
-          v-model:page-size="pageSize"
-          background
-          layout="total, sizes, prev, pager, next"
-          :total="ipList.length"
-          :page-sizes="[10, 20, 50]"
-        />
-      </div>
-    </div>
+    </section>
 
     <el-dialog
       v-model="addVisible"
       title="新增IP白名单"
-      width="560px"
+      width="912px"
       destroy-on-close
-      @closed="onAddDialogClosed"
+      class="whitelist-add-dialog"
+      @closed="resetAddForm"
     >
-      <el-form
-        ref="addFormRef"
-        :model="addForm"
-        :rules="addFormRules"
-        label-width="100px"
-        @submit.prevent
-      >
-        <el-form-item label="IP白名单" prop="rawText" required>
+      <el-form ref="addFormRef" :model="addForm" :rules="addRules" label-width="133px" class="add-form">
+        <el-form-item label="IP白名单" prop="rawText">
           <el-input
             v-model="addForm.rawText"
             type="textarea"
-            :rows="2"
-            placeholder="请输入IP白名单，多个IP用英文 ',' 逗号分隔"
+            resize="both"
+            placeholder="请输入IP白名单，多个IP用英文 “,” 逗号分隔"
           />
-          <p class="field-hint">
-            多个IP用英文 ',' 逗号分隔；网段可以用 '*' 号或 '/xx' 代替，'/xx' 中的 'xx' 取值范围为1~32之间的整数
-          </p>
+          <div class="field-tip">
+            多个IP用英文 “,” 逗号分隔；网段可以用 * 号或 “/xx” 代替，“/xx” 中<br />
+            的 “xx” 取值范围为1~32之间的整数
+          </div>
         </el-form-item>
       </el-form>
 
       <template #footer>
-        <el-button @click="addVisible = false">取消</el-button>
-        <el-button
-          type="primary"
-          :disabled="ipList.length >= WHITELIST_MAX"
-          @click="handleAddSubmit"
-        >
-          确定
-        </el-button>
+        <el-button class="dialog-cancel" @click="addVisible = false">取消</el-button>
+        <el-button type="primary" class="dialog-confirm" @click="confirmAdd">确定</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch } from 'vue'
+import { reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   parseCommaSeparatedSegments,
@@ -103,24 +72,28 @@ import {
 
 const WHITELIST_MAX = 1000
 
-const addVisible = ref(false)
-const addFormRef = ref(null)
 const tableRef = ref(null)
+const addFormRef = ref(null)
+const addVisible = ref(false)
 const selectedRows = ref([])
-const page = ref(1)
-const pageSize = ref(10)
 
 const addForm = reactive({
   rawText: ''
 })
 
-const addFormRules = {
+const ipList = ref([
+  { id: '1', segment: '192.168.199.46' },
+  { id: '2', segment: '192.168.201.59' }
+])
+
+const addRules = {
   rawText: [
+    { required: true, message: '请输入IP白名单', trigger: 'blur' },
     {
-      validator (_r, v, cb) {
-        const parsed = parseCommaSeparatedSegments(v)
-        if (parsed.error) return cb(new Error(parsed.error))
-        cb()
+      validator (_rule, value, callback) {
+        const parsed = parseCommaSeparatedSegments(value)
+        if (parsed.error) return callback(new Error(parsed.error))
+        callback()
       },
       trigger: ['blur', 'change']
     }
@@ -128,37 +101,10 @@ const addFormRules = {
 }
 
 function genId () {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
 }
 
-const ipList = ref([
-  { id: '1', segment: '127.0.0.1' },
-  { id: '2', segment: '192.168.1.100' },
-  { id: '3', segment: '10.0.0.10' }
-])
-
-const paginatedList = computed(() => {
-  const start = (page.value - 1) * pageSize.value
-  return ipList.value.slice(start, start + pageSize.value)
-})
-
-watch(pageSize, () => {
-  page.value = 1
-})
-
-watch(
-  () => ipList.value.length,
-  () => {
-    const maxPage = Math.max(1, Math.ceil(ipList.value.length / pageSize.value) || 1)
-    if (page.value > maxPage) page.value = maxPage
-  }
-)
-
-function onAddDialogClosed () {
-  addForm.rawText = ''
-}
-
-function handleOpenAdd () {
+function openAdd () {
   if (ipList.value.length >= WHITELIST_MAX) {
     ElMessage.warning(`白名单最多 ${WHITELIST_MAX} 条，请先删除后再添加`)
     return
@@ -167,101 +113,280 @@ function handleOpenAdd () {
   addVisible.value = true
 }
 
-async function handleAddSubmit () {
-  const form = addFormRef.value
-  if (!form) return
+function resetAddForm () {
+  addForm.rawText = ''
+  addFormRef.value?.resetFields()
+}
+
+async function confirmAdd () {
   try {
-    await form.validate()
+    await addFormRef.value?.validate()
   } catch {
     return
   }
+
   const parsed = parseCommaSeparatedSegments(addForm.rawText)
   if (parsed.error) {
     ElMessage.error(parsed.error)
     return
   }
-  const { segments } = parsed
+
   const room = WHITELIST_MAX - ipList.value.length
-  if (segments.length > room) {
+  if (parsed.segments.length > room) {
     ElMessage.warning(`最多还可添加 ${room} 条`)
     return
   }
 
   const pending = []
-  for (const seg of segments) {
-    const range = segmentToRange(seg)
+  for (const segment of parsed.segments) {
+    const range = segmentToRange(segment)
     const hit = findOverlappingRow(range, [...ipList.value, ...pending], null)
     if (hit) {
-      const hitLabel = hit.segment != null ? hit.segment : displayIpSegment(hit)
-      ElMessage.error(`与已有条目重叠：${hitLabel}（本次输入：${seg}）`)
+      const label = hit.segment != null ? hit.segment : displayIpSegment(hit)
+      ElMessage.error(`与已有条目重叠：${label}`)
       return
     }
-    pending.push({ id: genId(), segment: seg })
+    pending.push({ id: genId(), segment })
   }
 
   ipList.value.push(...pending)
-  ElMessage.success(pending.length > 1 ? `已添加 ${pending.length} 条` : '添加成功')
   addVisible.value = false
-}
-
-function confirmDelete (row) {
-  ElMessageBox.confirm(
-    `确定删除该 IP 白名单：${row.segment}？`,
-    '删除确认',
-    { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
-  )
-    .then(() => {
-      const i = ipList.value.findIndex((r) => r.id === row.id)
-      if (i > -1) ipList.value.splice(i, 1)
-      tableRef.value?.clearSelection?.()
-      ElMessage.success('已删除')
-    })
-    .catch(() => {})
+  ElMessage.success('操作成功')
 }
 
 function onSelectionChange (rows) {
   selectedRows.value = rows
 }
 
+function deleteRow (row) {
+  ipList.value = ipList.value.filter((item) => item.id !== row.id)
+  tableRef.value?.clearSelection?.()
+  ElMessage.success('操作成功')
+}
+
 function batchDelete () {
-  const n = selectedRows.value.length
-  if (!n) return
-  ElMessageBox.confirm(
-    `确定删除选中的 ${n} 条 IP 白名单吗？`,
-    '删除确认',
-    { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
-  )
+  const count = selectedRows.value.length
+  if (!count) return
+
+  ElMessageBox.confirm(`确定删除选中的 ${count} 条白名单吗？`, '提示', {
+    type: 'warning',
+    confirmButtonText: '确定',
+    cancelButtonText: '取消'
+  })
     .then(() => {
-      const ids = new Set(selectedRows.value.map((r) => r.id))
-      ipList.value = ipList.value.filter((r) => !ids.has(r.id))
+      const ids = new Set(selectedRows.value.map((row) => row.id))
+      ipList.value = ipList.value.filter((row) => !ids.has(row.id))
       tableRef.value?.clearSelection?.()
-      ElMessage.success(`已删除 ${n} 条`)
+      ElMessage.success('操作成功')
     })
     .catch(() => {})
 }
 </script>
 
 <style lang="scss" scoped>
-@import '@/styles/variables.scss';
+.whitelist-page {
+  min-height: 100%;
+  padding: 18px 23px 0;
+  background: #eef2f7;
+}
+
+.page-title {
+  margin: 20px 0 42px;
+  color: #1f2d3d;
+  font-size: 30px;
+  font-weight: 400;
+  line-height: 38px;
+}
+
+.whitelist-panel {
+  min-height: 484px;
+  background: #fff;
+}
 
 .toolbar {
+  height: 72px;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: 12px;
+  padding: 0 24px;
 }
 
-.pagination {
-  margin-top: 16px;
+.primary-button,
+.batch-button {
+  width: 87px;
+  height: 35px;
+  padding: 0;
+  border-radius: 0;
+  font-size: 14px;
+}
+
+.primary-button {
+  background: #387ee8;
+  border-color: #387ee8;
+}
+
+.batch-button {
+  color: #387ee8;
+  background: #f5f9ff;
+  border-color: #c8d9f2;
+
+  &.is-disabled {
+    color: #8eb1e4;
+    background: #f5f9ff;
+    border-color: #d8e4f3;
+  }
+}
+
+.whitelist-table {
+  width: 100%;
+
+  :deep(.el-table__cell) {
+    height: 45px;
+    padding: 0;
+    border-bottom-color: #e4ebf4;
+  }
+
+  :deep(.el-table__header th) {
+    background: #f2f2f2 !important;
+    color: #3e4b5a;
+    font-weight: 400;
+  }
+
+  :deep(.el-table__header .cell),
+  :deep(.el-table__body .cell) {
+    padding: 0 12px;
+    font-size: 14px;
+    line-height: 45px;
+  }
+
+  :deep(.el-checkbox__inner) {
+    width: 17px;
+    height: 17px;
+    border-color: #cfd8e5;
+    border-radius: 2px;
+  }
+
+  :deep(.el-table__body tr:hover > td) {
+    background-color: #fff !important;
+  }
+
+  :deep(.el-table__inner-wrapper::before) {
+    background: #e4ebf4;
+  }
+}
+
+.delete-link {
+  height: auto;
+  padding: 0;
+  color: #2f7bff;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.add-form {
+  padding-top: 25px;
+
+  :deep(.el-form-item) {
+    margin-bottom: 0;
+  }
+
+  :deep(.el-form-item__label) {
+    color: #1f2d3d;
+    font-size: 14px;
+    line-height: 82px;
+    padding-right: 16px;
+  }
+
+  :deep(.el-form-item.is-required:not(.is-no-asterisk).asterisk-left > .el-form-item__label::before) {
+    color: #d40000;
+    margin-right: 4px;
+  }
+
+  :deep(.el-textarea__inner) {
+    width: 506px;
+    min-height: 82px !important;
+    border-radius: 0;
+    color: #1f2d3d;
+    font-size: 14px;
+    line-height: 22px;
+    padding: 10px 18px;
+    box-shadow: 0 0 0 1px #d8dee8 inset;
+  }
+}
+
+.field-tip {
+  width: 506px;
+  margin-top: 10px;
+  color: #7f8794;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.dialog-cancel,
+.dialog-confirm {
+  width: 87px;
+  height: 35px;
+  padding: 0;
+  border-radius: 0;
+  font-size: 14px;
+}
+
+.dialog-cancel {
+  margin-right: 8px;
+  color: #1f2d3d;
+  border-color: #d8dee8;
+}
+
+.dialog-confirm {
+  background: #387ee8;
+  border-color: #387ee8;
+}
+</style>
+
+<style lang="scss">
+.whitelist-add-dialog.el-dialog {
+  height: 318px;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+}
+
+.whitelist-add-dialog .el-dialog__header {
+  height: 48px;
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  padding: 0 18px;
+  margin-right: 0;
+  background: #dce1e7;
 }
 
-.field-hint {
-  margin: 8px 0 0;
-  font-size: 12px;
-  color: $text-muted;
-  line-height: 1.5;
+.whitelist-add-dialog .el-dialog__title {
+  color: #111;
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 48px;
+}
+
+.whitelist-add-dialog .el-dialog__headerbtn {
+  top: 0;
+  right: 7px;
+  width: 48px;
+  height: 48px;
+}
+
+.whitelist-add-dialog .el-dialog__headerbtn .el-dialog__close {
+  color: #7a8494;
+  font-size: 18px;
+}
+
+.whitelist-add-dialog .el-dialog__body {
+  height: 204px;
+  padding: 0;
+}
+
+.whitelist-add-dialog .el-dialog__footer {
+  height: 66px;
+  padding: 13px 30px 0;
+  border-top: 1px solid #e7ebf1;
 }
 </style>

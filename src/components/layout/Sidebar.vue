@@ -13,7 +13,9 @@
     </div>
 
     <el-menu
+      ref="menuRef"
       :default-active="activeMenu"
+      :default-openeds="openedMenus"
       :collapse="collapsed"
       :collapse-transition="false"
       router
@@ -84,7 +86,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 defineProps({
@@ -92,10 +94,43 @@ defineProps({
 })
 
 const route = useRoute()
+const menuRef = ref(null)
+
 const activeMenu = computed(() => {
   if (route.path === '/dashboard') return ''
+  if (route.path.startsWith('/cert/ca')) return '/cert/ca'
+  if (route.path.startsWith('/cert/manage')) return '/cert/manage'
+  if (route.path.startsWith('/cert/user')) return '/cert/user'
   return route.path.startsWith('/key/manage') ? '/key/manage' : route.path
 })
+
+const openedMenus = computed(() => {
+  if (route.path.startsWith('/key/') || route.path.startsWith('/cert/')) return ['sign-service']
+  if (route.path.startsWith('/system/')) return ['system']
+  return []
+})
+
+watch(
+  () => route.path,
+  async () => {
+    await nextTick()
+    const menu = menuRef.value
+    if (!menu) return
+
+    if (openedMenus.value.includes('sign-service')) {
+      menu.open('sign-service')
+    } else {
+      menu.close('sign-service')
+    }
+
+    if (openedMenus.value.includes('system')) {
+      menu.open('system')
+    } else {
+      menu.close('system')
+    }
+  },
+  { immediate: true }
+)
 </script>
 
 <style lang="scss" scoped>
