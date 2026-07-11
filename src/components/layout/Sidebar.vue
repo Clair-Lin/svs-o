@@ -8,9 +8,9 @@
       </div>
       <div v-show="!collapsed" class="brand-copy">
         <div class="logo-text">签名验签服务器</div>
-        <div class="version-text">系统版本：1.0</div>
       </div>
     </div>
+    <div v-show="!collapsed" class="version-text">系统版本：1.0</div>
 
     <el-menu
       ref="menuRef"
@@ -152,6 +152,10 @@ watch(
       padding: 0;
     }
 
+    .version-text {
+      display: none;
+    }
+
     .brand-mark {
       transform: scale(0.9);
     }
@@ -159,11 +163,11 @@ watch(
 }
 
 .sidebar-logo {
-  height: 82px;
+  height: 49px;
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 0 14px;
+  padding: 12px 14px 0;
 }
 
 .brand-mark {
@@ -201,7 +205,7 @@ watch(
 
 .brand-copy {
   min-width: 0;
-  color: #FFFFFFA6;
+  color: #fff;
 }
 
 .logo-text {
@@ -213,11 +217,13 @@ watch(
 }
 
 .version-text {
-  margin-top: 14px;
-  padding-left: 1px;
+  height: 28px;
+  margin-top: 0;
+  padding-left: 0;
   font-size: 12px;
-  line-height: 16px;
+  line-height: 18px;
   color: #FFFFFFA6;
+  text-align: center;
   white-space: nowrap;
 }
 

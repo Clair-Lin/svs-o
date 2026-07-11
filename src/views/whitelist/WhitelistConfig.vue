@@ -5,7 +5,7 @@
     <section class="whitelist-panel">
       <div class="toolbar">
         <el-button type="primary" class="primary-button" @click="openAdd">新增</el-button>
-        <el-button class="batch-button" :disabled="!selectedRows.length" @click="batchDelete">
+        <el-button class="batch-button" @click="batchDelete">
           批量删除
         </el-button>
       </div>
@@ -17,9 +17,9 @@
         row-key="id"
         @selection-change="onSelectionChange"
       >
-        <el-table-column type="selection" width="68" />
+        <el-table-column type="selection" width="55" />
         <el-table-column prop="segment" label="IP白名单" min-width="400" />
-        <el-table-column label="操作" width="180" align="left">
+        <el-table-column label="操作" width="118" align="left">
           <template #default="{ row }">
             <el-button type="primary" link class="delete-link" @click="deleteRow(row)">
               删除
@@ -32,12 +32,12 @@
     <el-dialog
       v-model="addVisible"
       title="新增IP白名单"
-      width="912px"
+      width="730px"
       destroy-on-close
       class="whitelist-add-dialog"
       @closed="resetAddForm"
     >
-      <el-form ref="addFormRef" :model="addForm" :rules="addRules" label-width="133px" class="add-form">
+      <el-form ref="addFormRef" :model="addForm" :rules="addRules" label-width="126px" class="add-form">
         <el-form-item label="IP白名单" prop="rawText">
           <el-input
             v-model="addForm.rawText"
@@ -166,7 +166,10 @@ function deleteRow (row) {
 
 function batchDelete () {
   const count = selectedRows.value.length
-  if (!count) return
+  if (!count) {
+    ElMessage.warning('请选择要删除的白名单')
+    return
+  }
 
   ElMessageBox.confirm(`确定删除选中的 ${count} 条白名单吗？`, '提示', {
     type: 'warning',
@@ -186,38 +189,38 @@ function batchDelete () {
 <style lang="scss" scoped>
 .whitelist-page {
   min-height: 100%;
-  padding: 18px 23px 0;
+  padding: 10px 10px 0;
   background: #eef2f7;
 }
 
 .page-title {
-  margin: 20px 0 42px;
+  margin: 0 0 33px;
   color: #1f2d3d;
-  font-size: 30px;
+  font-size: 28px;
   font-weight: 400;
-  line-height: 38px;
+  line-height: 36px;
 }
 
 .whitelist-panel {
-  min-height: 484px;
+  min-height: 387px;
   background: #fff;
 }
 
 .toolbar {
-  height: 72px;
+  height: 69px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 0 24px;
+  gap: 10px;
+  padding: 0 20px;
 }
 
 .primary-button,
 .batch-button {
-  width: 87px;
-  height: 35px;
+  width: 70px;
+  height: 28px;
   padding: 0;
   border-radius: 0;
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .primary-button {
@@ -226,42 +229,42 @@ function batchDelete () {
 }
 
 .batch-button {
-  color: #387ee8;
-  background: #f5f9ff;
-  border-color: #c8d9f2;
-
-  &.is-disabled {
-    color: #8eb1e4;
-    background: #f5f9ff;
-    border-color: #d8e4f3;
-  }
+  color: #696969;
+  background: #fff;
+  border-color: #c7d6ee;
+  width: 100px;
 }
 
 .whitelist-table {
   width: 100%;
 
   :deep(.el-table__cell) {
-    height: 45px;
+    height: 36px;
     padding: 0;
-    border-bottom-color: #e4ebf4;
+    border-bottom-color: #e5eaf2;
   }
 
   :deep(.el-table__header th) {
-    background: #f2f2f2 !important;
+    background: #f3f3f3 !important;
     color: #3e4b5a;
     font-weight: 400;
   }
 
   :deep(.el-table__header .cell),
   :deep(.el-table__body .cell) {
-    padding: 0 12px;
-    font-size: 14px;
-    line-height: 45px;
+    padding: 0 10px;
+    font-size: 12px;
+    line-height: 36px;
+  }
+
+  :deep(.el-table__body .cell) {
+    color: #000;
+    font-weight: 500;
   }
 
   :deep(.el-checkbox__inner) {
-    width: 17px;
-    height: 17px;
+    width: 14px;
+    height: 14px;
     border-color: #cfd8e5;
     border-radius: 2px;
   }
@@ -279,12 +282,12 @@ function batchDelete () {
   height: auto;
   padding: 0;
   color: #2f7bff;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 400;
 }
 
 .add-form {
-  padding-top: 25px;
+  padding-top: 19px;
 
   :deep(.el-form-item) {
     margin-bottom: 0;
@@ -292,9 +295,9 @@ function batchDelete () {
 
   :deep(.el-form-item__label) {
     color: #1f2d3d;
-    font-size: 14px;
-    line-height: 82px;
-    padding-right: 16px;
+    font-size: 12px;
+    line-height: 66px;
+    padding-right: 12px;
   }
 
   :deep(.el-form-item.is-required:not(.is-no-asterisk).asterisk-left > .el-form-item__label::before) {
@@ -303,29 +306,29 @@ function batchDelete () {
   }
 
   :deep(.el-textarea__inner) {
-    width: 506px;
-    min-height: 82px !important;
+    width: 405px;
+    min-height: 66px !important;
     border-radius: 0;
     color: #1f2d3d;
-    font-size: 14px;
-    line-height: 22px;
-    padding: 10px 18px;
+    font-size: 12px;
+    line-height: 20px;
+    padding: 9px 14px;
     box-shadow: 0 0 0 1px #d8dee8 inset;
   }
 }
 
 .field-tip {
-  width: 506px;
-  margin-top: 10px;
+  width: 405px;
+  margin-top: 8px;
   color: #7f8794;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 12px;
+  line-height: 17px;
 }
 
 .dialog-cancel,
 .dialog-confirm {
-  width: 87px;
-  height: 35px;
+  width: 70px;
+  height: 28px;
   padding: 0;
   border-radius: 0;
   font-size: 14px;
@@ -345,14 +348,14 @@ function batchDelete () {
 
 <style lang="scss">
 .whitelist-add-dialog.el-dialog {
-  height: 318px;
+  height: 253px;
   padding: 0;
   border-radius: 0;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
 }
 
 .whitelist-add-dialog .el-dialog__header {
-  height: 48px;
+  height: 40px;
   display: flex;
   align-items: center;
   padding: 0 18px;
@@ -362,16 +365,16 @@ function batchDelete () {
 
 .whitelist-add-dialog .el-dialog__title {
   color: #111;
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 400;
-  line-height: 48px;
+  line-height: 40px;
 }
 
 .whitelist-add-dialog .el-dialog__headerbtn {
   top: 0;
-  right: 7px;
-  width: 48px;
-  height: 48px;
+  right: 6px;
+  width: 40px;
+  height: 40px;
 }
 
 .whitelist-add-dialog .el-dialog__headerbtn .el-dialog__close {
@@ -380,13 +383,13 @@ function batchDelete () {
 }
 
 .whitelist-add-dialog .el-dialog__body {
-  height: 204px;
+  height: 164px;
   padding: 0;
 }
 
 .whitelist-add-dialog .el-dialog__footer {
-  height: 66px;
-  padding: 13px 30px 0;
+  height: 49px;
+  padding: 10px 25px 0;
   border-top: 1px solid #e7ebf1;
 }
 </style>
